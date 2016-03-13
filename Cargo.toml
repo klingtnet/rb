@@ -1,0 +1,6 @@
+[package]
+name = "rb"
+version = "0.1.0"
+authors = ["Andreas Linz <klingt.net@gmail.com>"]
+
+[dependencies]
