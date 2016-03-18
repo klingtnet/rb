@@ -35,9 +35,9 @@ type Result<T> = ::std::result::Result<T, Err>;
 /// - TODO: synchronization between producer and consumer when the
 ///   is full or empty
 struct SPSC_RB<T> {
+    v: Mutex<Vec<T>>,
     read_pos: usize,
     write_pos: usize,
-    v: Mutex<Vec<T>>,
     size: usize,
 }
 impl<T: Clone + Default> SPSC_RB<T> {
