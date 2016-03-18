@@ -1,4 +1,5 @@
 use std::cmp;
+use std::sync::Mutex;
 
 trait RB<T: Clone+Default> {
     /// Returns true if the buffer is empty.
@@ -30,15 +31,15 @@ type Result<T> = ::std::result::Result<T, Err>;
 
 /// A Single-Producer-Single-Consumer RingBuffer
 struct SPSC_RB<T> {
-    v: Vec<T>,
     read_pos: usize,
     write_pos: usize,
+    v: Mutex<Vec<T>>,
     size: usize,
 }
 impl<T: Clone + Default> SPSC_RB<T> {
     fn new(size: usize) -> Self {
         SPSC_RB {
-            v: vec![T::default(); size + 1],
+            v: Mutex::new(vec![T::default(); size + 1]),
             read_pos: 0,
             write_pos: 0,
             // the additional element is used to distinct between empty and full state
@@ -73,7 +74,8 @@ impl<T: Clone + Default> RB<T> for SPSC_RB<T> {
     }
 
     fn clear(&mut self) {
-        self.v.iter_mut().map(|_| T::default()).count();
+        let mut buf = self.v.lock().unwrap();
+        buf.iter_mut().map(|_| T::default()).count();
     }
 
     fn write(&mut self, data: &[T]) -> Result<usize> {
@@ -82,9 +84,10 @@ impl<T: Clone + Default> RB<T> for SPSC_RB<T> {
         }
         let cnt = cmp::min(data.len(), self.slots_free());
         println!("write cnt: {}", cnt);
+        let mut buf = self.v.lock().unwrap();
         for idx in 0..cnt {
-            self.v[self.write_pos] = data[idx].clone();
-            self.write_pos = (self.write_pos + 1) % self.v.len();
+            buf[self.write_pos] = data[idx].clone();
+            self.write_pos = (self.write_pos + 1) % buf.len();
         }
         return Ok(cnt);
     }
@@ -95,9 +98,10 @@ impl<T: Clone + Default> RB<T> for SPSC_RB<T> {
         }
         let cnt = cmp::min(data.len(), self.count());
         println!("read cnt: {}", cnt);
+        let mut buf = self.v.lock().unwrap();
         for idx in 0..cnt {
-            data[idx] = self.v[self.read_pos].clone();
-            self.read_pos = (self.read_pos + 1) % self.v.len();
+            data[idx] = buf[self.read_pos].clone();
+            self.read_pos = (self.read_pos + 1) % buf.len();
         }
         Ok(cnt)
     }
