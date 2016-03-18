@@ -3,8 +3,10 @@ trait RB<T: Clone+Default> {
     fn is_empty(&self) -> bool;
     /// Returns true if the buffer is full.
     fn is_full(&self) -> bool;
-    /// Returns the number of values that can be written until the buffer is full.
+    /// Returns the total capacity of the ring buffer.
     fn capacity(&self) -> usize;
+    /// Returns the number of values that can be written until the buffer is full.
+    fn slots_free(&self) -> usize;
     /// Returns the number of values that are available in the buffer.
     fn count(&self) -> usize;
     /// Resets the whole buffer to the default value of type `T`.
