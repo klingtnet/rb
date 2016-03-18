@@ -51,9 +51,13 @@ impl<T: Clone + Default> SPSC_RB<T> {
         }
     }
 }
+// TODO: check this implementation
 unsafe impl<T> ::std::marker::Sync for SPSC_RB<T> {}
 
+// TODO: use `#[inline]` and benchmark
 impl<T: Clone + Default> RB<T> for SPSC_RB<T> {
+    // TODO: always inline
+
     fn is_empty(&self) -> bool {
         self.slots_free() == self.capacity()
     }
@@ -84,6 +88,8 @@ impl<T: Clone + Default> RB<T> for SPSC_RB<T> {
 
     fn write(&mut self, data: &[T]) -> Result<usize> {
         if self.is_full() {
+            // TODO: use a `::std::sync::Condvar` for blocking wait until something was read
+            // TODO: Return an `Error::Full`
             return Ok(0);
         }
         let cnt = cmp::min(data.len(), self.slots_free());
