@@ -12,7 +12,7 @@ trait RB<T: Clone+Default> {
     /// Resets the whole buffer to the default value of type `T`.
     fn clear(&mut self);
     /// Stores the given slice of data into the ring buffer.
-    /// The operation blocks until there are free slots if the buffer is full.
+    /// TODO: The operation blocks until there are free slots if the buffer is full.
     /// Returns the number of written elements or an Error.
     fn write(&mut self, &[T]) -> Result<usize>;
     /// Fills the given slice with values or, if the buffer is empty, does not modify it.
