@@ -83,7 +83,6 @@ impl<T: Clone + Default> RB<T> for SPSC_RB<T> {
             return Ok(0);
         }
         let cnt = cmp::min(data.len(), self.slots_free());
-        println!("write cnt: {}", cnt);
         let mut buf = self.v.lock().unwrap();
         for idx in 0..cnt {
             buf[self.write_pos] = data[idx].clone();
@@ -97,7 +96,6 @@ impl<T: Clone + Default> RB<T> for SPSC_RB<T> {
             return Ok(0);
         }
         let cnt = cmp::min(data.len(), self.count());
-        println!("read cnt: {}", cnt);
         let mut buf = self.v.lock().unwrap();
         for idx in 0..cnt {
             data[idx] = buf[self.read_pos].clone();
