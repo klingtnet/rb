@@ -29,7 +29,11 @@ enum Err {
 
 type Result<T> = ::std::result::Result<T, Err>;
 
-/// A Single-Producer-Single-Consumer RingBuffer
+/// A *thread-safe* Single-Producer-Single-Consumer RingBuffer
+///
+/// - mutually exclusive access for producer and consumer
+/// - TODO: synchronization between producer and consumer when the
+///   is full or empty
 struct SPSC_RB<T> {
     read_pos: usize,
     write_pos: usize,
