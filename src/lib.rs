@@ -146,9 +146,6 @@ impl<T: Clone+Default> RB_Inspector for SPSC_RB<T> {
     }
 }
 
-// TODO: check this implementation
-unsafe impl<T> ::std::marker::Sync for SPSC_RB<T> {}
-
 // TODO: use `#[inline]` and benchmark
 impl RB_Inspector for Inspector {
     // TODO: always inline
