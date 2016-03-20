@@ -34,6 +34,28 @@ fn test_read() {
 }
 
 #[test]
+fn test_wrap_around() {
+    let size = 128;
+    let mut rb: SPSC_RB<_> = SPSC_RB::new(size);
+    let in_data = (0..size*2).map(|i| i*2).collect::<Vec<_>>();
+    rb.write(&in_data[0..64]).unwrap();
+    assert_eq!(rb.count(), 64);
+    let mut out_data = vec![0; size*2];
+    // TODO: try to read more
+    rb.read(&mut out_data[0..64]).unwrap();
+    assert!(rb.is_empty());
+    rb.write(&in_data[64..64+size]).unwrap();
+    assert_eq!(rb.count(), 128);
+    assert!(rb.is_full());
+    rb.read(&mut out_data[64..64+size]).unwrap();
+    assert!(rb.is_empty());
+    rb.write(&in_data[64+size..]).unwrap();
+    assert_eq!(rb.count(), 64);
+    rb.read(&mut out_data[64+size..]).unwrap();
+    assert_eq!(in_data, out_data);
+}
+
+#[test]
 fn test() {
     let size = 32;
     let mut rb: SPSC_RB<f32> = SPSC_RB::new(size);
