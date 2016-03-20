@@ -106,7 +106,7 @@ impl<T: Clone + Default> RB<T> for SPSC_RB<T> {
             return Ok(0);
         }
         let cnt = cmp::min(data.len(), self.count());
-        let mut buf = self.v.lock().unwrap();
+        let buf = self.v.lock().unwrap();
         for idx in 0..cnt {
             data[idx] = buf[self.read_pos].clone();
             self.read_pos = (self.read_pos + 1) % buf.len();
