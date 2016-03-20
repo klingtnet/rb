@@ -1,7 +1,7 @@
 use std::cmp;
 use std::sync::Mutex;
 
-trait RB<T: Clone+Default> {
+pub trait RB<T: Clone+Default> {
     /// Returns true if the buffer is empty.
     fn is_empty(&self) -> bool;
     /// Returns true if the buffer is full.
@@ -27,21 +27,21 @@ enum Err {
     Unknown,
 }
 
-type Result<T> = ::std::result::Result<T, Err>;
+pub type Result<T> = ::std::result::Result<T, Err>;
 
 /// A *thread-safe* Single-Producer-Single-Consumer RingBuffer
 ///
 /// - mutually exclusive access for producer and consumer
 /// - TODO: synchronization between producer and consumer when the
 ///   is full or empty
-struct SPSC_RB<T> {
+pub struct SPSC_RB<T> {
     v: Mutex<Vec<T>>,
     read_pos: usize,
     write_pos: usize,
     size: usize,
 }
 impl<T: Clone + Default> SPSC_RB<T> {
-    fn new(size: usize) -> Self {
+    pub fn new(size: usize) -> Self {
         SPSC_RB {
             v: Mutex::new(vec![T::default(); size + 1]),
             read_pos: 0,
@@ -113,31 +113,4 @@ impl<T: Clone + Default> RB<T> for SPSC_RB<T> {
         }
         Ok(cnt)
     }
-}
-
-#[test]
-fn test() {
-    let size = 32;
-    let mut rb: SPSC_RB<f32> = SPSC_RB::new(size);
-    assert!(rb.is_empty());
-    assert_eq!(rb.slots_free(), size);
-    assert_eq!(rb.count(), 0);
-    let in_data = [1.0f32, 2.0, 3.0, 4.0, 5.0];
-    assert!(rb.write(&in_data).is_ok());
-    assert_eq!(rb.slots_free(), size - 5);
-    assert_eq!(rb.count(), 5);
-    let mut out_data = [0f32; 5];
-    assert!(rb.read(&mut out_data).is_ok());
-    assert!(rb.is_empty());
-    assert_eq!(rb.count(), 0);
-    assert_eq!(rb.slots_free(), size);
-    assert_eq!(out_data, in_data);
-    let in_data = [1.0f32; 32];
-    assert!(rb.write(&in_data).is_ok());
-    assert_eq!(rb.slots_free(), 0);
-    assert_eq!(rb.count(), 32);
-    let mut out_data = [0f32; 31];
-    assert!(rb.read(&mut out_data).is_ok());
-    assert_eq!(&in_data[..31], &out_data);
-    assert_eq!(rb.count(), 1);
 }
