@@ -12,7 +12,7 @@ fn test_write() {
     let data = (0..size).collect::<Vec<_>>();
     for i in 0..8 {
         let slice = &data[i*16..(i+1)*16];
-        rb.write(slice);
+        rb.write(slice).unwrap();
         assert_eq!(rb.count(), (i+1)*16);
         assert_eq!(rb.slots_free(), size - (i+1)*16);
     }
@@ -25,10 +25,10 @@ fn test_read() {
     let mut rb: SPSC_RB<_> = SPSC_RB::new(size);
     assert!(rb.is_empty());
     let in_data = (0..size).map(|i| i*2).collect::<Vec<_>>();
-    rb.write(&in_data);
+    rb.write(&in_data).unwrap();
     assert!(rb.is_full());
     let mut out_data = vec![0; size];
-    rb.read(&mut out_data);
+    rb.read(&mut out_data).unwrap();
     assert_eq!(out_data, in_data);
     assert!(rb.is_empty());
 }
