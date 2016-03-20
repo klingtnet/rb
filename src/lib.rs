@@ -25,12 +25,18 @@ pub trait RbProducer<T> {
     /// TODO: The operation blocks until there are free slots if the buffer is full.
     /// Returns the number of written elements or an Error.
     fn write(&self, &[T]) -> Result<usize>;
+    /// Works analog to `write` but blocks until there are as much
+    /// free slots in the ring buffer as there are elements in the given slice.
+    fn write_blocking(&self, &[T]) -> Result<usize>;
 }
 
 pub trait RbConsumer<T> {
     /// Fills the given slice with values or, if the buffer is empty, does not modify it.
     /// Returns the number of written values or an error.
     fn read(&self, &mut [T]) -> Result<usize>;
+    /// Works analog to `read` but blocks until the it can read enough elements to fill
+    /// the given buffer slice.
+    fn read_blocking(&self, &mut [T]) -> Result<usize>;
 }
 
 #[derive(Debug)]
@@ -204,6 +210,10 @@ impl<T: Clone+Default> RbProducer<T> for Consumer<T> {
         }
         return Ok(cnt);
     }
+
+    fn write_blocking(&self, data: &[T]) -> Result<usize> {
+        unimplemented!()
+    }
 }
 
 impl<T: Clone+Default> RbConsumer<T> for Producer<T> {
@@ -220,5 +230,9 @@ impl<T: Clone+Default> RbConsumer<T> for Producer<T> {
             self.inspector.read_pos.store(new_re_pos, Ordering::Relaxed);
         }
         Ok(cnt)
+    }
+
+    fn read_blocking(&self, data: &mut [T]) -> Result<usize> {
+        unimplemented!()
     }
 }
