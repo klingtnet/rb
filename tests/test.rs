@@ -20,6 +20,20 @@ fn test_write() {
 }
 
 #[test]
+fn test_read() {
+    let size = 128;
+    let mut rb: SPSC_RB<usize> = SPSC_RB::new(size);
+    assert!(rb.is_empty());
+    let in_data = (0..size).map(|i| i*2).collect::<Vec<_>>();
+    rb.write(&in_data);
+    assert!(rb.is_full());
+    let mut out_data = vec![0; size];
+    rb.read(&mut out_data);
+    assert_eq!(out_data, in_data);
+    assert!(rb.is_empty());
+}
+
+#[test]
 fn test() {
     let size = 32;
     let mut rb: SPSC_RB<f32> = SPSC_RB::new(size);
