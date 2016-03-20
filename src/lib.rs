@@ -55,7 +55,6 @@ pub struct SpscRb<T> {
     buf: Arc<Mutex<Vec<T>>>,
     read_pos: Arc<AtomicUsize>,
     write_pos: Arc<AtomicUsize>,
-    size: usize,
     inspector: Arc<Inspector>,
 }
 impl<T: Clone + Default> SpscRb<T> {
@@ -66,7 +65,6 @@ impl<T: Clone + Default> SpscRb<T> {
             read_pos: read_pos.clone(),
             write_pos: write_pos.clone(),
             // the additional element is used to distinct between empty and full state
-            size: size + 1,
             inspector: Arc::new(Inspector{
                 read_pos: read_pos.clone(),
                 write_pos: write_pos.clone(),
