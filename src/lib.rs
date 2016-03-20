@@ -43,7 +43,7 @@ pub type Result<T> = ::std::result::Result<T, Err>;
 /// - TODO: synchronization between producer and consumer when the
 ///   is full or empty
 pub struct SPSC_RB<T> {
-    v: Arc<Mutex<Vec<T>>>,
+    buf: Arc<Mutex<Vec<T>>>,
     read_pos: AtomicUsize,
     write_pos: AtomicUsize,
     size: usize,
@@ -51,7 +51,7 @@ pub struct SPSC_RB<T> {
 impl<T: Clone + Default> SPSC_RB<T> {
     pub fn new(size: usize) -> Self {
         SPSC_RB {
-            v: Arc::new(Mutex::new(vec![T::default(); size + 1])),
+            buf: Arc::new(Mutex::new(vec![T::default(); size + 1])),
             read_pos: AtomicUsize::new(0),
             write_pos: AtomicUsize::new(0),
             // the additional element is used to distinct between empty and full state
@@ -61,13 +61,13 @@ impl<T: Clone + Default> SPSC_RB<T> {
 
     pub fn producer(&self) -> Producer<T> {
        Producer {
-            buf: self.v.clone(),
+            buf: self.buf.clone(),
        }
     }
 
     pub fn consumer(&self) -> Consumer<T> {
         Consumer {
-            buf: self.v.clone(),
+            buf: self.buf.clone(),
         }
     }
 
@@ -79,7 +79,7 @@ impl<T: Clone + Default> SPSC_RB<T> {
         }
         let cnt = cmp::min(data.len(), self.slots_free());
         // TODO: try!(unlock)
-        let mut buf = self.v.lock().unwrap();
+        let mut buf = self.buf.lock().unwrap();
         for idx in 0..cnt {
             let wr_pos = self.write_pos.load(Ordering::Relaxed);
             buf[wr_pos] = data[idx].clone();
@@ -94,7 +94,7 @@ impl<T: Clone + Default> SPSC_RB<T> {
             return Ok(0);
         }
         let cnt = cmp::min(data.len(), self.count());
-        let buf = self.v.lock().unwrap();
+        let buf = self.buf.lock().unwrap();
         for idx in 0..cnt {
             let re_pos = self.read_pos.load(Ordering::Relaxed);
             data[idx] = buf[re_pos].clone();
