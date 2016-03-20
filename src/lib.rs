@@ -175,41 +175,54 @@ impl RB_Inspector for Inspector {
         self.capacity() - self.slots_free()
     }
 }
-    fn write(&mut self, data: &[T]) -> Result<usize> {
-        if self.is_full() {
-            // TODO: use a `::std::sync::Condvar` for blocking wait until something was read
-            // TODO: Return an `Error::Full`
-            return Ok(0);
-        }
-        let cnt = cmp::min(data.len(), self.slots_free());
-        let mut buf = self.v.lock().unwrap();
-        for idx in 0..cnt {
-            buf[self.write_pos] = data[idx].clone();
-            self.write_pos = (self.write_pos + 1) % buf.len();
-        }
-        return Ok(cnt);
-    }
 
-    fn read(&mut self, data: &mut [T]) -> Result<usize> {
-        if self.is_empty() {
-            return Ok(0);
-        }
-        let cnt = cmp::min(data.len(), self.count());
-        let buf = self.v.lock().unwrap();
-        for idx in 0..cnt {
-            data[idx] = buf[self.read_pos].clone();
-            self.read_pos = (self.read_pos + 1) % buf.len();
-        }
-        Ok(cnt)
-    }
-}
-
+/// Producer view into the ring buffer.
+/// Provides a write method.
 pub struct Producer<T> {
     buf: Arc<Mutex<Vec<T>>>,
     inspector: Arc<Inspector>,
 }
 
+/// Consumer view into the ring buffer.
+/// Provides a read method.
 pub struct Consumer<T> {
     buf: Arc<Mutex<Vec<T>>>,
     inspector: Arc<Inspector>,
+}
+
+impl<T: Clone+Default> RB_Producer<T> for Consumer<T> {
+    fn write(&self, data: &[T]) -> Result<usize> {
+        if self.inspector.is_full() {
+            // TODO: use a `::std::sync::Condvar` for blocking wait until something was read
+            // TODO: Return an `Error::Full`
+            return Ok(0);
+        }
+        let cnt = cmp::min(data.len(), self.inspector.slots_free());
+        // TODO: try!(unlock)
+        let mut buf = self.buf.lock().unwrap();
+        for idx in 0..cnt {
+            let wr_pos = self.inspector.write_pos.load(Ordering::Relaxed);
+            buf[wr_pos] = data[idx].clone();
+            let new_wr_pos = (wr_pos + 1) % buf.len();
+            self.inspector.write_pos.store(new_wr_pos, Ordering::Relaxed);
+        }
+        return Ok(cnt);
+    }
+}
+
+impl<T: Clone+Default> RB_Consumer<T> for Producer<T> {
+    fn read(&self, data: &mut [T]) -> Result<usize> {
+        if self.inspector.is_empty() {
+            return Ok(0);
+        }
+        let cnt = cmp::min(data.len(), self.inspector.count());
+        let buf = self.buf.lock().unwrap();
+        for idx in 0..cnt {
+            let re_pos = self.inspector.read_pos.load(Ordering::Relaxed);
+            data[idx] = buf[re_pos].clone();
+            let new_re_pos = (re_pos + 1) % buf.len();
+            self.inspector.read_pos.store(new_re_pos, Ordering::Relaxed);
+        }
+        Ok(cnt)
+    }
 }
