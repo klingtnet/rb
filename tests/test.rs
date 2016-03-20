@@ -1,13 +1,13 @@
 extern crate rb;
 
-use rb::{SPSC_RB, RB, RB_Inspector};
+use rb::{SpscRb, RB, RbInspector};
 use std::thread;
 use std::sync::Arc;
 
 #[test]
 fn test_write() {
     let size = 128;
-    let mut rb: SPSC_RB<_> = SPSC_RB::new(size);
+    let mut rb: SpscRb<_> = SpscRb::new(size);
     assert!(rb.is_empty());
     assert_eq!(rb.slots_free(), size);
     assert_eq!(rb.count(), 0);
@@ -24,7 +24,7 @@ fn test_write() {
 #[test]
 fn test_read() {
     let size = 128;
-    let mut rb: SPSC_RB<_> = SPSC_RB::new(size);
+    let mut rb: SpscRb<_> = SpscRb::new(size);
     assert!(rb.is_empty());
     let in_data = (0..size).map(|i| i*2).collect::<Vec<_>>();
     rb.write(&in_data).unwrap();
@@ -38,7 +38,7 @@ fn test_read() {
 #[test]
 fn test_wrap_around() {
     let size = 128;
-    let mut rb: SPSC_RB<_> = SPSC_RB::new(size);
+    let mut rb: SpscRb<_> = SpscRb::new(size);
     let in_data = (0..size*2).map(|i| i*2).collect::<Vec<_>>();
     rb.write(&in_data[0..64]).unwrap();
     assert_eq!(rb.count(), 64);
@@ -60,7 +60,7 @@ fn test_wrap_around() {
 #[test]
 fn test_threads() {
     let size = 128;
-    let mut rb = Arc::new(SPSC_RB::new(size));
+    let mut rb = Arc::new(SpscRb::new(size));
     let rb_write = rb.clone();
     let in_data = (0..size).map(|i| i*2).collect::<Vec<_>>();
     let in_data_copy = in_data.clone();
