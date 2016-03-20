@@ -3,6 +3,23 @@ extern crate rb;
 use rb::{SPSC_RB, RB};
 
 #[test]
+fn test_write() {
+    let size = 128;
+    let mut rb: SPSC_RB<usize> = SPSC_RB::new(size);
+    assert!(rb.is_empty());
+    assert_eq!(rb.slots_free(), size);
+    assert_eq!(rb.count(), 0);
+    let data = (0..size).collect::<Vec<_>>();
+    for i in 0..8 {
+        let slice = &data[i*16..(i+1)*16];
+        rb.write(slice);
+        assert_eq!(rb.count(), (i+1)*16);
+        assert_eq!(rb.slots_free(), size - (i+1)*16);
+    }
+    assert!(rb.is_full());
+}
+
+#[test]
 fn test() {
     let size = 32;
     let mut rb: SPSC_RB<f32> = SPSC_RB::new(size);
