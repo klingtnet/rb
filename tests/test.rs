@@ -58,28 +58,30 @@ fn test_wrap_around() {
 }
 
 #[test]
-fn test() {
-    let size = 32;
-    let mut rb: SPSC_RB<f32> = SPSC_RB::new(size);
+fn test_threads() {
+    let size = 128;
+    let mut rb = Arc::new(SPSC_RB::new(size));
+    let rb_write = rb.clone();
+    let in_data = (0..size).map(|i| i*2).collect::<Vec<_>>();
+    let in_data_copy = in_data.clone();
+    let mut out_data = Vec::with_capacity(size);
+
+    const write_buf_size: usize = 32;
+    thread::spawn(move || {
+        for i in 0..(size/write_buf_size) {
+            let cnt = rb_write.write(&in_data_copy[i*write_buf_size..(i+1)*write_buf_size]).unwrap();
+            assert_eq!(cnt, write_buf_size);
+        }
+    });
+
+    const read_buf_size: usize = 8;
+    for _ in 0..(size/read_buf_size) {
+        let mut buf = [0; read_buf_size];
+        while rb.count() < read_buf_size {}
+        let cnt = rb.read(&mut buf).unwrap();
+        assert_eq!(cnt, read_buf_size);
+        out_data.extend(buf.iter().cloned());
+    }
+    assert_eq!(in_data, out_data);
     assert!(rb.is_empty());
-    assert_eq!(rb.slots_free(), size);
-    assert_eq!(rb.count(), 0);
-    let in_data = [1.0f32, 2.0, 3.0, 4.0, 5.0];
-    assert!(rb.write(&in_data).is_ok());
-    assert_eq!(rb.slots_free(), size - 5);
-    assert_eq!(rb.count(), 5);
-    let mut out_data = [0f32; 5];
-    assert!(rb.read(&mut out_data).is_ok());
-    assert!(rb.is_empty());
-    assert_eq!(rb.count(), 0);
-    assert_eq!(rb.slots_free(), size);
-    assert_eq!(out_data, in_data);
-    let in_data = [1.0f32; 32];
-    assert!(rb.write(&in_data).is_ok());
-    assert_eq!(rb.slots_free(), 0);
-    assert_eq!(rb.count(), 32);
-    let mut out_data = [0f32; 31];
-    assert!(rb.read(&mut out_data).is_ok());
-    assert_eq!(&in_data[..31], &out_data);
-    assert_eq!(rb.count(), 1);
 }
