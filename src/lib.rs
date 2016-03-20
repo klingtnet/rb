@@ -23,6 +23,7 @@ pub trait RB<T: Clone+Default> {
     fn read(&mut self, &mut [T]) -> Result<usize>;
 }
 
+#[derive(Debug)]
 enum Err {
     Unknown,
 }
