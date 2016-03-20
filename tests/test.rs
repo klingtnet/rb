@@ -1,6 +1,6 @@
 extern crate rb;
 
-use rb::{SpscRb, RB, RbInspector};
+use rb::{SpscRb, RbInspector};
 use std::thread;
 use std::sync::Arc;
 
