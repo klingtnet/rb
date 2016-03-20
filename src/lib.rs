@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub trait RB<T: Clone+Default> {
     /// Resets the whole buffer to the default value of type `T`.
-    fn clear(&mut self);
+    fn clear(&self);
 }
 
 pub trait RB_Inspector {
@@ -24,13 +24,13 @@ pub trait RB_Producer<T> {
     /// Stores the given slice of data into the ring buffer.
     /// TODO: The operation blocks until there are free slots if the buffer is full.
     /// Returns the number of written elements or an Error.
-    fn write(&mut self, &[T]) -> Result<usize>;
+    fn write(&self, &[T]) -> Result<usize>;
 }
 
 pub trait RB_Consumer<T> {
     /// Fills the given slice with values or, if the buffer is empty, does not modify it.
     /// Returns the number of written values or an error.
-    fn read(&mut self, &mut [T]) -> Result<usize>;
+    fn read(&self, &mut [T]) -> Result<usize>;
 }
 
 #[derive(Debug)]
@@ -89,7 +89,7 @@ impl<T: Clone + Default> SPSC_RB<T> {
         }
     }
 
-    pub fn write(&mut self, data: &[T]) -> Result<usize> {
+    pub fn write(&self, data: &[T]) -> Result<usize> {
         if self.inspector.is_full() {
             // TODO: use a `::std::sync::Condvar` for blocking wait until something was read
             // TODO: Return an `Error::Full`
@@ -107,7 +107,7 @@ impl<T: Clone + Default> SPSC_RB<T> {
         return Ok(cnt);
     }
 
-    pub fn read(&mut self, data: &mut [T]) -> Result<usize> {
+    pub fn read(&self, data: &mut [T]) -> Result<usize> {
         if self.inspector.is_empty() {
             return Ok(0);
         }
@@ -123,7 +123,7 @@ impl<T: Clone + Default> SPSC_RB<T> {
     }
 }
 impl<T:Clone+Default> RB<T> for SPSC_RB<T> {
-    fn clear(&mut self) {
+    fn clear(&self) {
         let mut buf = self.buf.lock().unwrap();
         buf.iter_mut().map(|_| T::default()).count();
     }
