@@ -34,11 +34,11 @@ pub trait RB_Consumer<T> {
 }
 
 #[derive(Debug)]
-pub enum Err {
-    Unknown,
+pub enum RB_Error {
+    Full,
 }
 
-pub type Result<T> = ::std::result::Result<T, Err>;
+pub type Result<T> = ::std::result::Result<T, RB_Error>;
 
 struct Inspector {
     read_pos: Arc<AtomicUsize>,
@@ -92,8 +92,7 @@ impl<T: Clone + Default> SPSC_RB<T> {
     pub fn write(&self, data: &[T]) -> Result<usize> {
         if self.inspector.is_full() {
             // TODO: use a `::std::sync::Condvar` for blocking wait until something was read
-            // TODO: Return an `Error::Full`
-            return Ok(0);
+            return Err(RB_Error::Full);
         }
         let cnt = cmp::min(data.len(), self.inspector.slots_free());
         // TODO: try!(unlock)
@@ -194,8 +193,7 @@ impl<T: Clone+Default> RB_Producer<T> for Consumer<T> {
     fn write(&self, data: &[T]) -> Result<usize> {
         if self.inspector.is_full() {
             // TODO: use a `::std::sync::Condvar` for blocking wait until something was read
-            // TODO: Return an `Error::Full`
-            return Ok(0);
+            return Err(RB_Error::Full);
         }
         let cnt = cmp::min(data.len(), self.inspector.slots_free());
         // TODO: try!(unlock)
