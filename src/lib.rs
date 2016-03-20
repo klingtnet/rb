@@ -24,7 +24,7 @@ pub trait RB<T: Clone+Default> {
 }
 
 #[derive(Debug)]
-enum Err {
+pub enum Err {
     Unknown,
 }
 
