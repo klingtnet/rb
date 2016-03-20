@@ -5,7 +5,7 @@ use rb::{SPSC_RB, RB};
 #[test]
 fn test_write() {
     let size = 128;
-    let mut rb: SPSC_RB<usize> = SPSC_RB::new(size);
+    let mut rb: SPSC_RB<_> = SPSC_RB::new(size);
     assert!(rb.is_empty());
     assert_eq!(rb.slots_free(), size);
     assert_eq!(rb.count(), 0);
@@ -22,7 +22,7 @@ fn test_write() {
 #[test]
 fn test_read() {
     let size = 128;
-    let mut rb: SPSC_RB<usize> = SPSC_RB::new(size);
+    let mut rb: SPSC_RB<_> = SPSC_RB::new(size);
     assert!(rb.is_empty());
     let in_data = (0..size).map(|i| i*2).collect::<Vec<_>>();
     rb.write(&in_data);
