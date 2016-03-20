@@ -1,6 +1,8 @@
 extern crate rb;
 
-use rb::{SPSC_RB, RB};
+use rb::{SPSC_RB, RB, RB_Inspector};
+use std::thread;
+use std::sync::Arc;
 
 #[test]
 fn test_write() {
