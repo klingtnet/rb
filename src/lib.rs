@@ -44,14 +44,14 @@ pub trait RbConsumer<T> {
 #[derive(Debug)]
 pub enum RbError {
     Full,
-	Empty,
+    Empty,
 }
 impl fmt::Display for RbError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		match self {
-			&RbError::Full => write!(f, "No free slots in the buffer"),
-			&RbError::Empty => write!(f, "Buffer is empty"),
-		}
+        match self {
+            &RbError::Full => write!(f, "No free slots in the buffer"),
+            &RbError::Empty => write!(f, "Buffer is empty"),
+        }
     }
 }
 
@@ -72,8 +72,8 @@ pub struct SpscRb<T> {
     read_pos: Arc<AtomicUsize>,
     write_pos: Arc<AtomicUsize>,
     inspector: Arc<Inspector>,
-	empty: Arc<Condvar>,
-	full: Arc<Condvar>,
+    empty: Arc<Condvar>,
+    full: Arc<Condvar>,
 }
 impl<T: Clone + Default> SpscRb<T> {
     pub fn new(size: usize) -> Self {
@@ -82,8 +82,8 @@ impl<T: Clone + Default> SpscRb<T> {
             buf: Arc::new(Mutex::new(vec![T::default(); size + 1])),
             read_pos: read_pos.clone(),
             write_pos: write_pos.clone(),
-			empty: Arc::new(Condvar::new()),
-			full: Arc::new(Condvar::new()),
+            empty: Arc::new(Condvar::new()),
+            full: Arc::new(Condvar::new()),
             // the additional element is used to distinct between empty and full state
             inspector: Arc::new(Inspector {
                 read_pos: read_pos.clone(),
@@ -110,7 +110,7 @@ impl<T: Clone + Default> SpscRb<T> {
 
     pub fn read(&self, data: &mut [T]) -> Result<usize> {
         if self.inspector.is_empty() {
-			return Err(RbError::Empty);
+            return Err(RbError::Empty);
         }
         let cnt = cmp::min(data.len(), self.inspector.count());
         let buf = self.buf.lock().unwrap();
@@ -133,8 +133,8 @@ impl<T: Clone + Default> RB<T> for SpscRb<T> {
         Producer {
             buf: self.buf.clone(),
             inspector: self.inspector.clone(),
-			empty: self.empty.clone(),
-			full: self.full.clone(),
+            empty: self.empty.clone(),
+            full: self.full.clone(),
         }
     }
 
@@ -142,8 +142,8 @@ impl<T: Clone + Default> RB<T> for SpscRb<T> {
         Consumer {
             buf: self.buf.clone(),
             inspector: self.inspector.clone(),
-			empty: self.empty.clone(),
-			full: self.full.clone(),
+            empty: self.empty.clone(),
+            full: self.full.clone(),
         }
     }
 }
@@ -197,8 +197,8 @@ impl RbInspector for Inspector {
 pub struct Producer<T> {
     buf: Arc<Mutex<Vec<T>>>,
     inspector: Arc<Inspector>,
-	empty: Arc<Condvar>,
-	full: Arc<Condvar>,
+    empty: Arc<Condvar>,
+    full: Arc<Condvar>,
 }
 
 /// Consumer view into the ring buffer.
@@ -206,15 +206,15 @@ pub struct Producer<T> {
 pub struct Consumer<T> {
     buf: Arc<Mutex<Vec<T>>>,
     inspector: Arc<Inspector>,
-	empty: Arc<Condvar>,
-	full: Arc<Condvar>,
+    empty: Arc<Condvar>,
+    full: Arc<Condvar>,
 }
 
 impl<T: Clone> RbProducer<T> for Producer<T> {
     fn write(&self, data: &[T]) -> Result<usize> {
-		if data.len() == 0 {
-			return Ok(0);
-		}
+        if data.len() == 0 {
+            return Ok(0);
+        }
         if self.inspector.is_full() {
             return Err(RbError::Full);
         }
@@ -226,16 +226,20 @@ impl<T: Clone> RbProducer<T> for Producer<T> {
             let new_wr_pos = (wr_pos + 1) % buf.len();
             self.inspector.write_pos.store(new_wr_pos, Ordering::Relaxed);
         }
-		self.full.notify_one();
+        self.full.notify_one();
         return Ok(cnt);
     }
 
     fn write_blocking(&self, data: &[T]) -> Result<usize> {
-		if data.len() == 0 {
-			return Ok(0);
-		}
-		let guard = self.buf.lock().unwrap();
-        let mut buf = if self.inspector.is_full() { self.empty.wait(guard).unwrap() } else { guard };
+        if data.len() == 0 {
+            return Ok(0);
+        }
+        let guard = self.buf.lock().unwrap();
+        let mut buf = if self.inspector.is_full() {
+            self.empty.wait(guard).unwrap()
+        } else {
+            guard
+        };
         let cnt = cmp::min(data.len(), self.inspector.slots_free());
         for idx in 0..cnt {
             let wr_pos = self.inspector.write_pos.load(Ordering::Relaxed);
@@ -243,18 +247,18 @@ impl<T: Clone> RbProducer<T> for Producer<T> {
             let new_wr_pos = (wr_pos + 1) % buf.len();
             self.inspector.write_pos.store(new_wr_pos, Ordering::Relaxed);
         }
-		self.full.notify_one();
+        self.full.notify_one();
         return Ok(cnt);
     }
 }
 
 impl<T: Clone> RbConsumer<T> for Consumer<T> {
     fn read(&self, data: &mut [T]) -> Result<usize> {
-		if data.len() == 0 {
-			return Ok(0);
-		}
+        if data.len() == 0 {
+            return Ok(0);
+        }
         if self.inspector.is_empty() {
-			return Err(RbError::Empty);
+            return Err(RbError::Empty);
         }
         let cnt = cmp::min(data.len(), self.inspector.count());
         let buf = self.buf.lock().unwrap();
@@ -264,16 +268,20 @@ impl<T: Clone> RbConsumer<T> for Consumer<T> {
             let new_re_pos = (re_pos + 1) % buf.len();
             self.inspector.read_pos.store(new_re_pos, Ordering::Relaxed);
         }
-		self.empty.notify_one();
+        self.empty.notify_one();
         Ok(cnt)
     }
 
     fn read_blocking(&self, data: &mut [T]) -> Result<usize> {
-		if data.len() == 0 {
-			return Ok(0);
-		}
-		let guard = self.buf.lock().unwrap();
-        let buf = if self.inspector.is_empty() { self.full.wait(guard).unwrap() } else {guard};
+        if data.len() == 0 {
+            return Ok(0);
+        }
+        let guard = self.buf.lock().unwrap();
+        let buf = if self.inspector.is_empty() {
+            self.full.wait(guard).unwrap()
+        } else {
+            guard
+        };
         let cnt = cmp::min(data.len(), self.inspector.count());
         for idx in 0..cnt {
             let re_pos = self.inspector.read_pos.load(Ordering::Relaxed);
@@ -281,7 +289,7 @@ impl<T: Clone> RbConsumer<T> for Consumer<T> {
             let new_re_pos = (re_pos + 1) % buf.len();
             self.inspector.read_pos.store(new_re_pos, Ordering::Relaxed);
         }
-		self.empty.notify_one();
+        self.empty.notify_one();
         Ok(cnt)
     }
 }
