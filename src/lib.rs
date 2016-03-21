@@ -25,7 +25,6 @@ pub trait RbInspector {
 
 pub trait RbProducer<T> {
     /// Stores the given slice of data into the ring buffer.
-    /// TODO: The operation blocks until there are free slots if the buffer is full.
     /// Returns the number of written elements or an Error.
     fn write(&self, &[T]) -> Result<usize>;
     /// Works analog to `write` but blocks until there are as much
