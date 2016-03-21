@@ -72,8 +72,8 @@ pub struct SpscRb<T> {
     read_pos: Arc<AtomicUsize>,
     write_pos: Arc<AtomicUsize>,
     inspector: Arc<Inspector>,
-    empty: Arc<Condvar>,
-    full: Arc<Condvar>,
+    slots_free: Arc<Condvar>,
+    data_available: Arc<Condvar>,
 }
 impl<T: Clone + Default> SpscRb<T> {
     pub fn new(size: usize) -> Self {
@@ -82,8 +82,8 @@ impl<T: Clone + Default> SpscRb<T> {
             buf: Arc::new(Mutex::new(vec![T::default(); size + 1])),
             read_pos: read_pos.clone(),
             write_pos: write_pos.clone(),
-            empty: Arc::new(Condvar::new()),
-            full: Arc::new(Condvar::new()),
+            slots_free: Arc::new(Condvar::new()),
+            data_available: Arc::new(Condvar::new()),
             // the additional element is used to distinct between empty and full state
             inspector: Arc::new(Inspector {
                 read_pos: read_pos.clone(),
@@ -133,8 +133,8 @@ impl<T: Clone + Default> RB<T> for SpscRb<T> {
         Producer {
             buf: self.buf.clone(),
             inspector: self.inspector.clone(),
-            empty: self.empty.clone(),
-            full: self.full.clone(),
+            slots_free: self.slots_free.clone(),
+            data_available: self.data_available.clone(),
         }
     }
 
@@ -142,8 +142,8 @@ impl<T: Clone + Default> RB<T> for SpscRb<T> {
         Consumer {
             buf: self.buf.clone(),
             inspector: self.inspector.clone(),
-            empty: self.empty.clone(),
-            full: self.full.clone(),
+            slots_free: self.slots_free.clone(),
+            data_available: self.data_available.clone(),
         }
     }
 }
@@ -197,8 +197,8 @@ impl RbInspector for Inspector {
 pub struct Producer<T> {
     buf: Arc<Mutex<Vec<T>>>,
     inspector: Arc<Inspector>,
-    empty: Arc<Condvar>,
-    full: Arc<Condvar>,
+    slots_free: Arc<Condvar>,
+    data_available: Arc<Condvar>,
 }
 
 /// Consumer view into the ring buffer.
@@ -206,8 +206,8 @@ pub struct Producer<T> {
 pub struct Consumer<T> {
     buf: Arc<Mutex<Vec<T>>>,
     inspector: Arc<Inspector>,
-    empty: Arc<Condvar>,
-    full: Arc<Condvar>,
+    slots_free: Arc<Condvar>,
+    data_available: Arc<Condvar>,
 }
 
 impl<T: Clone> RbProducer<T> for Producer<T> {
@@ -226,7 +226,7 @@ impl<T: Clone> RbProducer<T> for Producer<T> {
             let new_wr_pos = (wr_pos + 1) % buf.len();
             self.inspector.write_pos.store(new_wr_pos, Ordering::Relaxed);
         }
-        self.full.notify_one();
+        self.data_available.notify_one();
         return Ok(cnt);
     }
 
@@ -236,7 +236,7 @@ impl<T: Clone> RbProducer<T> for Producer<T> {
         }
         let guard = self.buf.lock().unwrap();
         let mut buf = if self.inspector.is_full() {
-            self.empty.wait(guard).unwrap()
+            self.slots_free.wait(guard).unwrap()
         } else {
             guard
         };
@@ -247,7 +247,7 @@ impl<T: Clone> RbProducer<T> for Producer<T> {
             let new_wr_pos = (wr_pos + 1) % buf.len();
             self.inspector.write_pos.store(new_wr_pos, Ordering::Relaxed);
         }
-        self.full.notify_one();
+        self.data_available.notify_one();
         return Ok(cnt);
     }
 }
@@ -268,7 +268,7 @@ impl<T: Clone> RbConsumer<T> for Consumer<T> {
             let new_re_pos = (re_pos + 1) % buf.len();
             self.inspector.read_pos.store(new_re_pos, Ordering::Relaxed);
         }
-        self.empty.notify_one();
+        self.slots_free.notify_one();
         Ok(cnt)
     }
 
@@ -278,7 +278,7 @@ impl<T: Clone> RbConsumer<T> for Consumer<T> {
         }
         let guard = self.buf.lock().unwrap();
         let buf = if self.inspector.is_empty() {
-            self.full.wait(guard).unwrap()
+            self.data_available.wait(guard).unwrap()
         } else {
             guard
         };
@@ -289,7 +289,7 @@ impl<T: Clone> RbConsumer<T> for Consumer<T> {
             let new_re_pos = (re_pos + 1) % buf.len();
             self.inspector.read_pos.store(new_re_pos, Ordering::Relaxed);
         }
-        self.empty.notify_one();
+        self.slots_free.notify_one();
         Ok(cnt)
     }
 }
