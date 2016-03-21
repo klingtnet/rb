@@ -165,10 +165,7 @@ impl<T: Clone + Default> RbInspector for SpscRb<T> {
     }
 }
 
-// TODO: use `#[inline]` and benchmark
 impl RbInspector for Inspector {
-    // TODO: always inline
-
     fn is_empty(&self) -> bool {
         self.slots_free() == self.capacity()
     }
