@@ -7,7 +7,7 @@ use std::sync::Arc;
 #[test]
 fn test_write() {
     let size = 128;
-    let rb: SpscRb<_> = SpscRb::new(size);
+    let rb = SpscRb::new(size);
     assert!(rb.is_empty());
     assert_eq!(rb.slots_free(), size);
     assert_eq!(rb.count(), 0);
@@ -24,7 +24,7 @@ fn test_write() {
 #[test]
 fn test_read() {
     let size = 128;
-    let rb: SpscRb<_> = SpscRb::new(size);
+    let rb = SpscRb::new(size);
     assert!(rb.is_empty());
     let in_data = (0..size).map(|i| i*2).collect::<Vec<_>>();
     rb.write(&in_data).unwrap();
@@ -38,7 +38,7 @@ fn test_read() {
 #[test]
 fn test_wrap_around() {
     let size = 128;
-    let rb: SpscRb<_> = SpscRb::new(size);
+    let rb = SpscRb::new(size);
     let in_data = (0..size*2).map(|i| i*2).collect::<Vec<_>>();
     rb.write(&in_data[0..64]).unwrap();
     assert_eq!(rb.count(), 64);
@@ -60,8 +60,9 @@ fn test_wrap_around() {
 #[test]
 fn test_threads() {
     let size = 128;
-    let rb = Arc::new(SpscRb::new(size));
-    let rb_write = rb.clone();
+    let rb = SpscRb::new(size);
+    let producer = rb.producer();
+    let consumer = rb.consumer();
     let in_data = (0..size).map(|i| i*2).collect::<Vec<_>>();
     let in_data_copy = in_data.clone();
     let mut out_data = Vec::with_capacity(size);
@@ -69,7 +70,7 @@ fn test_threads() {
     const write_buf_size: usize = 32;
     thread::spawn(move || {
         for i in 0..(size/write_buf_size) {
-            let cnt = rb_write.write(&in_data_copy[i*write_buf_size..(i+1)*write_buf_size]).unwrap();
+            let cnt = producer.write(&in_data_copy[i*write_buf_size..(i+1)*write_buf_size]).unwrap();
             assert_eq!(cnt, write_buf_size);
         }
     });
@@ -78,7 +79,7 @@ fn test_threads() {
     for _ in 0..(size/read_buf_size) {
         let mut buf = [0; read_buf_size];
         while rb.count() < read_buf_size {}
-        let cnt = rb.read(&mut buf).unwrap();
+        let cnt = consumer.read(&mut buf).unwrap();
         assert_eq!(cnt, read_buf_size);
         out_data.extend(buf.iter().cloned());
     }
