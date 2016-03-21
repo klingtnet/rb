@@ -1,6 +1,6 @@
 use std::cmp;
 use std::fmt;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Condvar};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub trait RB<T: Clone+Default> {
@@ -65,13 +65,14 @@ struct Inspector {
 /// A *thread-safe* Single-Producer-Single-Consumer RingBuffer
 ///
 /// - mutually exclusive access for producer and consumer
-/// - TODO: synchronization between producer and consumer when the
-///   is full or empty
+/// TODO: Remove SPSC because the buffer can be used as MPMC
 pub struct SpscRb<T> {
     buf: Arc<Mutex<Vec<T>>>,
     read_pos: Arc<AtomicUsize>,
     write_pos: Arc<AtomicUsize>,
     inspector: Arc<Inspector>,
+	empty: Arc<Condvar>,
+	full: Arc<Condvar>,
 }
 impl<T: Clone + Default> SpscRb<T> {
     pub fn new(size: usize) -> Self {
@@ -80,6 +81,8 @@ impl<T: Clone + Default> SpscRb<T> {
             buf: Arc::new(Mutex::new(vec![T::default(); size + 1])),
             read_pos: read_pos.clone(),
             write_pos: write_pos.clone(),
+			empty: Arc::new(Condvar::new()),
+			full: Arc::new(Condvar::new()),
             // the additional element is used to distinct between empty and full state
             inspector: Arc::new(Inspector {
                 read_pos: read_pos.clone(),
@@ -91,7 +94,6 @@ impl<T: Clone + Default> SpscRb<T> {
 
     pub fn write(&self, data: &[T]) -> Result<usize> {
         if self.inspector.is_full() {
-            // TODO: use a `::std::sync::Condvar` for blocking wait until something was read
             return Err(RbError::Full);
         }
         let cnt = cmp::min(data.len(), self.inspector.slots_free());
@@ -131,6 +133,8 @@ impl<T: Clone + Default> RB<T> for SpscRb<T> {
         Producer {
             buf: self.buf.clone(),
             inspector: self.inspector.clone(),
+			empty: self.empty.clone(),
+			full: self.full.clone(),
         }
     }
 
@@ -138,6 +142,8 @@ impl<T: Clone + Default> RB<T> for SpscRb<T> {
         Consumer {
             buf: self.buf.clone(),
             inspector: self.inspector.clone(),
+			empty: self.empty.clone(),
+			full: self.full.clone(),
         }
     }
 }
@@ -194,6 +200,8 @@ impl RbInspector for Inspector {
 pub struct Producer<T> {
     buf: Arc<Mutex<Vec<T>>>,
     inspector: Arc<Inspector>,
+	empty: Arc<Condvar>,
+	full: Arc<Condvar>,
 }
 
 /// Consumer view into the ring buffer.
@@ -201,12 +209,13 @@ pub struct Producer<T> {
 pub struct Consumer<T> {
     buf: Arc<Mutex<Vec<T>>>,
     inspector: Arc<Inspector>,
+	empty: Arc<Condvar>,
+	full: Arc<Condvar>,
 }
 
 impl<T: Clone> RbProducer<T> for Producer<T> {
     fn write(&self, data: &[T]) -> Result<usize> {
         if self.inspector.is_full() {
-            // TODO: use a `::std::sync::Condvar` for blocking wait until something was read
             return Err(RbError::Full);
         }
         let cnt = cmp::min(data.len(), self.inspector.slots_free());
@@ -218,25 +227,30 @@ impl<T: Clone> RbProducer<T> for Producer<T> {
             let new_wr_pos = (wr_pos + 1) % buf.len();
             self.inspector.write_pos.store(new_wr_pos, Ordering::Relaxed);
         }
+		self.full.notify_one();
         return Ok(cnt);
     }
 
     fn write_blocking(&self, data: &[T]) -> Result<usize> {
-        while self.inspector.slots_free() < data.len() {}
+		let guard = self.buf.lock().unwrap();
+        let mut buf = if self.inspector.is_full() { self.empty.wait(guard).unwrap() } else { guard };
         let cnt = cmp::min(data.len(), self.inspector.slots_free());
-        let mut buf = self.buf.lock().unwrap();
         for idx in 0..cnt {
             let wr_pos = self.inspector.write_pos.load(Ordering::Relaxed);
             buf[wr_pos] = data[idx].clone();
             let new_wr_pos = (wr_pos + 1) % buf.len();
             self.inspector.write_pos.store(new_wr_pos, Ordering::Relaxed);
         }
+		self.full.notify_one();
         return Ok(cnt);
     }
 }
 
 impl<T: Clone> RbConsumer<T> for Consumer<T> {
     fn read(&self, data: &mut [T]) -> Result<usize> {
+		if data.len() == 0 {
+			return Ok(0);
+		}
         if self.inspector.is_empty() {
             return Ok(0);
         }
@@ -248,19 +262,21 @@ impl<T: Clone> RbConsumer<T> for Consumer<T> {
             let new_re_pos = (re_pos + 1) % buf.len();
             self.inspector.read_pos.store(new_re_pos, Ordering::Relaxed);
         }
+		self.empty.notify_one();
         Ok(cnt)
     }
 
     fn read_blocking(&self, data: &mut [T]) -> Result<usize> {
-        while self.inspector.count() < data.len() {}
+		let guard = self.buf.lock().unwrap();
+        let buf = if self.inspector.is_empty() { self.full.wait(guard).unwrap() } else {guard};
         let cnt = cmp::min(data.len(), self.inspector.count());
-        let buf = self.buf.lock().unwrap();
         for idx in 0..cnt {
             let re_pos = self.inspector.read_pos.load(Ordering::Relaxed);
             data[idx] = buf[re_pos].clone();
             let new_re_pos = (re_pos + 1) % buf.len();
             self.inspector.read_pos.store(new_re_pos, Ordering::Relaxed);
         }
+		self.empty.notify_one();
         Ok(cnt)
     }
 }
