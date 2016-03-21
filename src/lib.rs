@@ -5,6 +5,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 pub trait RB<T: Clone+Default> {
     /// Resets the whole buffer to the default value of type `T`.
     fn clear(&self);
+    fn producer(&self) -> Producer<T>;
+    fn consumer(&self) -> Consumer<T>;
 }
 
 pub trait RbInspector {
@@ -79,20 +81,6 @@ impl<T: Clone + Default> SpscRb<T> {
         }
     }
 
-    pub fn producer(&self) -> Producer<T> {
-       Producer {
-            buf: self.buf.clone(),
-            inspector: self.inspector.clone(),
-       }
-    }
-
-    pub fn consumer(&self) -> Consumer<T> {
-        Consumer {
-            buf: self.buf.clone(),
-            inspector: self.inspector.clone(),
-        }
-    }
-
     pub fn write(&self, data: &[T]) -> Result<usize> {
         if self.inspector.is_full() {
             // TODO: use a `::std::sync::Condvar` for blocking wait until something was read
@@ -129,6 +117,20 @@ impl<T:Clone+Default> RB<T> for SpscRb<T> {
     fn clear(&self) {
         let mut buf = self.buf.lock().unwrap();
         buf.iter_mut().map(|_| T::default()).count();
+    }
+
+    fn producer(&self) -> Producer<T> {
+       Producer {
+            buf: self.buf.clone(),
+            inspector: self.inspector.clone(),
+       }
+    }
+
+    fn consumer(&self) -> Consumer<T> {
+        Consumer {
+            buf: self.buf.clone(),
+            inspector: self.inspector.clone(),
+        }
     }
 }
 impl<T: Clone+Default> RbInspector for SpscRb<T> {
