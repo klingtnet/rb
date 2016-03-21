@@ -214,7 +214,16 @@ impl<T: Clone> RbProducer<T> for Producer<T> {
     }
 
     fn write_blocking(&self, data: &[T]) -> Result<usize> {
-        unimplemented!()
+        while self.inspector.slots_free() < data.len() {}
+        let cnt = cmp::min(data.len(), self.inspector.slots_free());
+        let mut buf = self.buf.lock().unwrap();
+        for idx in 0..cnt {
+            let wr_pos = self.inspector.write_pos.load(Ordering::Relaxed);
+            buf[wr_pos] = data[idx].clone();
+            let new_wr_pos = (wr_pos + 1) % buf.len();
+            self.inspector.write_pos.store(new_wr_pos, Ordering::Relaxed);
+        }
+        return Ok(cnt);
     }
 }
 
@@ -235,6 +244,15 @@ impl<T: Clone> RbConsumer<T> for Consumer<T> {
     }
 
     fn read_blocking(&self, data: &mut [T]) -> Result<usize> {
-        unimplemented!()
+        while self.inspector.count() < data.len() {}
+        let cnt = cmp::min(data.len(), self.inspector.count());
+        let buf = self.buf.lock().unwrap();
+        for idx in 0..cnt {
+            let re_pos = self.inspector.read_pos.load(Ordering::Relaxed);
+            data[idx] = buf[re_pos].clone();
+            let new_re_pos = (re_pos + 1) % buf.len();
+            self.inspector.read_pos.store(new_re_pos, Ordering::Relaxed);
+        }
+        Ok(cnt)
     }
 }
