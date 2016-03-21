@@ -9,6 +9,4 @@ matrix:
     include:
         - rust: nightly
           script:
-              - cargo build
-              - cargo test
               - cargo bench
