@@ -73,11 +73,11 @@ impl<T: Clone + Default> SpscRb<T> {
             read_pos: read_pos.clone(),
             write_pos: write_pos.clone(),
             // the additional element is used to distinct between empty and full state
-            inspector: Arc::new(Inspector{
+            inspector: Arc::new(Inspector {
                 read_pos: read_pos.clone(),
                 write_pos: write_pos.clone(),
-                size: size+1,
-            })
+                size: size + 1,
+            }),
         }
     }
 
@@ -113,17 +113,17 @@ impl<T: Clone + Default> SpscRb<T> {
         Ok(cnt)
     }
 }
-impl<T:Clone+Default> RB<T> for SpscRb<T> {
+impl<T: Clone + Default> RB<T> for SpscRb<T> {
     fn clear(&self) {
         let mut buf = self.buf.lock().unwrap();
         buf.iter_mut().map(|_| T::default()).count();
     }
 
     fn producer(&self) -> Producer<T> {
-       Producer {
+        Producer {
             buf: self.buf.clone(),
             inspector: self.inspector.clone(),
-       }
+        }
     }
 
     fn consumer(&self) -> Consumer<T> {
@@ -133,7 +133,7 @@ impl<T:Clone+Default> RB<T> for SpscRb<T> {
         }
     }
 }
-impl<T: Clone+Default> RbInspector for SpscRb<T> {
+impl<T: Clone + Default> RbInspector for SpscRb<T> {
     fn is_empty(&self) -> bool {
         self.inspector.is_empty()
     }

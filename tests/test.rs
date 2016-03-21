@@ -13,10 +13,10 @@ fn test_write() {
     assert_eq!(rb.count(), 0);
     let data = (0..size).collect::<Vec<_>>();
     for i in 0..8 {
-        let slice = &data[i*16..(i+1)*16];
+        let slice = &data[i * 16..(i + 1) * 16];
         rb.write(slice).unwrap();
-        assert_eq!(rb.count(), (i+1)*16);
-        assert_eq!(rb.slots_free(), size - (i+1)*16);
+        assert_eq!(rb.count(), (i + 1) * 16);
+        assert_eq!(rb.slots_free(), size - (i + 1) * 16);
     }
     assert!(rb.is_full());
 }
@@ -26,7 +26,7 @@ fn test_read() {
     let size = 128;
     let rb = SpscRb::new(size);
     assert!(rb.is_empty());
-    let in_data = (0..size).map(|i| i*2).collect::<Vec<_>>();
+    let in_data = (0..size).map(|i| i * 2).collect::<Vec<_>>();
     rb.write(&in_data).unwrap();
     assert!(rb.is_full());
     let mut out_data = vec![0; size];
@@ -39,21 +39,21 @@ fn test_read() {
 fn test_wrap_around() {
     let size = 128;
     let rb = SpscRb::new(size);
-    let in_data = (0..size*2).map(|i| i*2).collect::<Vec<_>>();
+    let in_data = (0..size * 2).map(|i| i * 2).collect::<Vec<_>>();
     rb.write(&in_data[0..64]).unwrap();
     assert_eq!(rb.count(), 64);
     let mut out_data = vec![0; size*2];
     // TODO: try to read more
     rb.read(&mut out_data[0..64]).unwrap();
     assert!(rb.is_empty());
-    rb.write(&in_data[64..64+size]).unwrap();
+    rb.write(&in_data[64..64 + size]).unwrap();
     assert_eq!(rb.count(), 128);
     assert!(rb.is_full());
-    rb.read(&mut out_data[64..64+size]).unwrap();
+    rb.read(&mut out_data[64..64 + size]).unwrap();
     assert!(rb.is_empty());
-    rb.write(&in_data[64+size..]).unwrap();
+    rb.write(&in_data[64 + size..]).unwrap();
     assert_eq!(rb.count(), 64);
-    rb.read(&mut out_data[64+size..]).unwrap();
+    rb.read(&mut out_data[64 + size..]).unwrap();
     assert_eq!(in_data, out_data);
 }
 
@@ -63,20 +63,21 @@ fn test_threads() {
     let rb = SpscRb::new(size);
     let producer = rb.producer();
     let consumer = rb.consumer();
-    let in_data = (0..size).map(|i| i*2).collect::<Vec<_>>();
+    let in_data = (0..size).map(|i| i * 2).collect::<Vec<_>>();
     let in_data_copy = in_data.clone();
     let mut out_data = Vec::with_capacity(size);
 
     const write_buf_size: usize = 32;
     thread::spawn(move || {
-        for i in 0..(size/write_buf_size) {
-            let cnt = producer.write(&in_data_copy[i*write_buf_size..(i+1)*write_buf_size]).unwrap();
+        for i in 0..(size / write_buf_size) {
+            let cnt = producer.write(&in_data_copy[i * write_buf_size..(i + 1) * write_buf_size])
+                              .unwrap();
             assert_eq!(cnt, write_buf_size);
         }
     });
 
     const read_buf_size: usize = 8;
-    for _ in 0..(size/read_buf_size) {
+    for _ in 0..(size / read_buf_size) {
         let mut buf = [0; read_buf_size];
         while rb.count() < read_buf_size {}
         let cnt = consumer.read(&mut buf).unwrap();
