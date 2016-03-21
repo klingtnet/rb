@@ -99,7 +99,6 @@ impl<T: Clone + Default> SpscRb<T> {
             return Err(RbError::Full);
         }
         let cnt = cmp::min(data.len(), self.inspector.slots_free());
-        // TODO: try!(unlock)
         let mut buf = self.buf.lock().unwrap();
         for idx in 0..cnt {
             let wr_pos = self.write_pos.load(Ordering::Relaxed);
@@ -224,7 +223,6 @@ impl<T: Clone> RbProducer<T> for Producer<T> {
             return Err(RbError::Full);
         }
         let cnt = cmp::min(data.len(), self.inspector.slots_free());
-        // TODO: try!(unlock)
         let mut buf = self.buf.lock().unwrap();
         for idx in 0..cnt {
             let wr_pos = self.inspector.write_pos.load(Ordering::Relaxed);
