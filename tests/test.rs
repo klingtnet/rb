@@ -66,21 +66,21 @@ fn test_threads() {
     let in_data_copy = in_data.clone();
     let mut out_data = Vec::with_capacity(size);
 
-    const write_buf_size: usize = 32;
+    const WRITE_BUF_SIZE: usize = 32;
     thread::spawn(move || {
-        for i in 0..(size / write_buf_size) {
-            let cnt = producer.write(&in_data_copy[i * write_buf_size..(i + 1) * write_buf_size])
+        for i in 0..(size / WRITE_BUF_SIZE) {
+            let cnt = producer.write(&in_data_copy[i * WRITE_BUF_SIZE..(i + 1) * WRITE_BUF_SIZE])
                               .unwrap();
-            assert_eq!(cnt, write_buf_size);
+            assert_eq!(cnt, WRITE_BUF_SIZE);
         }
     });
 
-    const read_buf_size: usize = 8;
-    for _ in 0..(size / read_buf_size) {
-        let mut buf = [0; read_buf_size];
-        while rb.count() < read_buf_size {}
+    const READ_BUF_SIZE: usize = 8;
+    for _ in 0..(size / READ_BUF_SIZE) {
+        let mut buf = [0; READ_BUF_SIZE];
+        while rb.count() < READ_BUF_SIZE {}
         let cnt = consumer.read(&mut buf).unwrap();
-        assert_eq!(cnt, read_buf_size);
+        assert_eq!(cnt, READ_BUF_SIZE);
         out_data.extend(buf.iter().cloned());
     }
     assert_eq!(in_data, out_data);
@@ -97,22 +97,21 @@ fn test_threads_blocking() {
     let in_data_copy = in_data.clone();
     let mut out_data = Vec::with_capacity(size);
 
-    const write_buf_size: usize = 32;
+    const WRITE_BUF_SIZE: usize = 32;
     thread::spawn(move || {
-        for i in 0..(size / write_buf_size) {
-            let cnt = producer.write_blocking(&in_data_copy[i * write_buf_size..(i + 1) *
-                                                                                write_buf_size])
+        for i in 0..(size / WRITE_BUF_SIZE) {
+            let cnt = producer.write_blocking(&in_data_copy[i * WRITE_BUF_SIZE..(i + 1) *
+                                                                                WRITE_BUF_SIZE])
                               .unwrap();
-            assert_eq!(cnt, write_buf_size);
+            assert_eq!(cnt, WRITE_BUF_SIZE);
         }
     });
 
-    const read_buf_size: usize = 8;
-    for _ in 0..(size / read_buf_size) {
-        let mut buf = [0; read_buf_size];
+    const READ_BUF_SIZE: usize = 8;
+    for _ in 0..(size / READ_BUF_SIZE) {
+        let mut buf = [0; READ_BUF_SIZE];
         let cnt = consumer.read_blocking(&mut buf).unwrap();
-        //println!("read {} values", cnt);
-        assert_eq!(cnt, read_buf_size);
+        assert_eq!(cnt, READ_BUF_SIZE);
         out_data.extend(buf.iter().cloned());
     }
     assert_eq!(in_data, out_data);
