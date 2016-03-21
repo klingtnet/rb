@@ -195,7 +195,7 @@ pub struct Consumer<T> {
     inspector: Arc<Inspector>,
 }
 
-impl<T: Clone+Default> RbProducer<T> for Consumer<T> {
+impl<T: Clone+Default> RbProducer<T> for Producer<T> {
     fn write(&self, data: &[T]) -> Result<usize> {
         if self.inspector.is_full() {
             // TODO: use a `::std::sync::Condvar` for blocking wait until something was read
@@ -218,7 +218,7 @@ impl<T: Clone+Default> RbProducer<T> for Consumer<T> {
     }
 }
 
-impl<T: Clone+Default> RbConsumer<T> for Producer<T> {
+impl<T: Clone+Default> RbConsumer<T> for Consumer<T> {
     fn read(&self, data: &mut [T]) -> Result<usize> {
         if self.inspector.is_empty() {
             return Ok(0);
