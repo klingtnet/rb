@@ -45,11 +45,13 @@ pub trait RbConsumer<T> {
 #[derive(Debug)]
 pub enum RbError {
     Full,
+	Empty,
 }
 impl fmt::Display for RbError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		match self {
-			&RbError::Full => write!(f, "No free slots in the buffer")
+			&RbError::Full => write!(f, "No free slots in the buffer"),
+			&RbError::Empty => write!(f, "Buffer is empty"),
 		}
     }
 }
@@ -110,7 +112,7 @@ impl<T: Clone + Default> SpscRb<T> {
 
     pub fn read(&self, data: &mut [T]) -> Result<usize> {
         if self.inspector.is_empty() {
-            return Ok(0);
+			return Err(RbError::Empty);
         }
         let cnt = cmp::min(data.len(), self.inspector.count());
         let buf = self.buf.lock().unwrap();
@@ -215,6 +217,9 @@ pub struct Consumer<T> {
 
 impl<T: Clone> RbProducer<T> for Producer<T> {
     fn write(&self, data: &[T]) -> Result<usize> {
+		if data.len() == 0 {
+			return Ok(0);
+		}
         if self.inspector.is_full() {
             return Err(RbError::Full);
         }
@@ -232,6 +237,9 @@ impl<T: Clone> RbProducer<T> for Producer<T> {
     }
 
     fn write_blocking(&self, data: &[T]) -> Result<usize> {
+		if data.len() == 0 {
+			return Ok(0);
+		}
 		let guard = self.buf.lock().unwrap();
         let mut buf = if self.inspector.is_full() { self.empty.wait(guard).unwrap() } else { guard };
         let cnt = cmp::min(data.len(), self.inspector.slots_free());
@@ -252,7 +260,7 @@ impl<T: Clone> RbConsumer<T> for Consumer<T> {
 			return Ok(0);
 		}
         if self.inspector.is_empty() {
-            return Ok(0);
+			return Err(RbError::Empty);
         }
         let cnt = cmp::min(data.len(), self.inspector.count());
         let buf = self.buf.lock().unwrap();
@@ -267,6 +275,9 @@ impl<T: Clone> RbConsumer<T> for Consumer<T> {
     }
 
     fn read_blocking(&self, data: &mut [T]) -> Result<usize> {
+		if data.len() == 0 {
+			return Ok(0);
+		}
 		let guard = self.buf.lock().unwrap();
         let buf = if self.inspector.is_empty() { self.full.wait(guard).unwrap() } else {guard};
         let cnt = cmp::min(data.len(), self.inspector.count());
