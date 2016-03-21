@@ -87,3 +87,35 @@ fn test_threads() {
     assert_eq!(in_data, out_data);
     assert!(rb.is_empty());
 }
+
+#[test]
+fn test_threads_blocking() {
+    let size = 1024;
+    let rb = SpscRb::new(size);
+    let producer = rb.producer();
+    let consumer = rb.consumer();
+    let in_data = (0..size).map(|i| i * 2).collect::<Vec<_>>();
+    let in_data_copy = in_data.clone();
+    let mut out_data = Vec::with_capacity(size);
+
+    const write_buf_size: usize = 32;
+    thread::spawn(move || {
+        for i in 0..(size / write_buf_size) {
+            let cnt = producer.write_blocking(&in_data_copy[i * write_buf_size..(i + 1) *
+                                                                                write_buf_size])
+                              .unwrap();
+            assert_eq!(cnt, write_buf_size);
+        }
+    });
+
+    const read_buf_size: usize = 8;
+    for _ in 0..(size / read_buf_size) {
+        let mut buf = [0; read_buf_size];
+        let cnt = consumer.read_blocking(&mut buf).unwrap();
+        //println!("read {} values", cnt);
+        assert_eq!(cnt, read_buf_size);
+        out_data.extend(buf.iter().cloned());
+    }
+    assert_eq!(in_data, out_data);
+    assert!(rb.is_empty());
+}
