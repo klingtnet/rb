@@ -6,3 +6,9 @@ rust:
 matrix:
     allow_failures:
         - rust: nightly
+    include:
+        - rust: nightly
+          script:
+              - cargo build
+              - cargo test
+              - cargo bench
