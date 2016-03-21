@@ -1,4 +1,5 @@
 use std::cmp;
+use std::fmt;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -44,6 +45,13 @@ pub trait RbConsumer<T> {
 #[derive(Debug)]
 pub enum RbError {
     Full,
+}
+impl fmt::Display for RbError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		match self {
+			&RbError::Full => write!(f, "No free slots in the buffer")
+		}
+    }
 }
 
 pub type Result<T> = ::std::result::Result<T, RbError>;
