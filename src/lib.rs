@@ -69,8 +69,6 @@ struct Inspector {
 /// TODO: Remove SPSC because the buffer can be used as MPMC
 pub struct SpscRb<T> {
     buf: Arc<Mutex<Vec<T>>>,
-    read_pos: Arc<AtomicUsize>,
-    write_pos: Arc<AtomicUsize>,
     inspector: Arc<Inspector>,
     slots_free: Arc<Condvar>,
     data_available: Arc<Condvar>,
@@ -80,8 +78,6 @@ impl<T: Clone + Default> SpscRb<T> {
         let (read_pos, write_pos) = (Arc::new(AtomicUsize::new(0)), Arc::new(AtomicUsize::new(0)));
         SpscRb {
             buf: Arc::new(Mutex::new(vec![T::default(); size + 1])),
-            read_pos: read_pos.clone(),
-            write_pos: write_pos.clone(),
             slots_free: Arc::new(Condvar::new()),
             data_available: Arc::new(Condvar::new()),
             // the additional element is used to distinct between empty and full state
