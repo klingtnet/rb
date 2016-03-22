@@ -92,36 +92,6 @@ impl<T: Clone + Default> SpscRb<T> {
             }),
         }
     }
-
-    pub fn write(&self, data: &[T]) -> Result<usize> {
-        if self.inspector.is_full() {
-            return Err(RbError::Full);
-        }
-        let cnt = cmp::min(data.len(), self.inspector.slots_free());
-        let mut buf = self.buf.lock().unwrap();
-        for idx in 0..cnt {
-            let wr_pos = self.write_pos.load(Ordering::Relaxed);
-            buf[wr_pos] = data[idx].clone();
-            let new_wr_pos = (wr_pos + 1) % buf.len();
-            self.write_pos.store(new_wr_pos, Ordering::Relaxed);
-        }
-        return Ok(cnt);
-    }
-
-    pub fn read(&self, data: &mut [T]) -> Result<usize> {
-        if self.inspector.is_empty() {
-            return Err(RbError::Empty);
-        }
-        let cnt = cmp::min(data.len(), self.inspector.count());
-        let buf = self.buf.lock().unwrap();
-        for idx in 0..cnt {
-            let re_pos = self.read_pos.load(Ordering::Relaxed);
-            data[idx] = buf[re_pos].clone();
-            let new_re_pos = (re_pos + 1) % buf.len();
-            self.read_pos.store(new_re_pos, Ordering::Relaxed);
-        }
-        Ok(cnt)
-    }
 }
 impl<T: Clone + Default> RB<T> for SpscRb<T> {
     fn clear(&self) {
