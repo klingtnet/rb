@@ -9,6 +9,7 @@ A thread-safe fixed size circular (ring) buffer written in safe Rust.
 - thread-safe
 - blocking and non-blocking IO
 - no unsafe blocks
+- never under- or overflows
 
 ## Examples
 

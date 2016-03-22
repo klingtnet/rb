@@ -90,6 +90,7 @@ struct Inspector {
 /// - blocking and non-blocking IO
 /// - mutually exclusive access for producer and consumer
 /// - no use of `unsafe`
+/// - never under- or overflows
 ///
 /// ```
 /// use std::thread;
