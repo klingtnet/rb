@@ -36,6 +36,25 @@ fn test_read() {
 }
 
 #[test]
+fn test_clear() {
+    let size = 128;
+    let rb = SpscRb::new(size);
+    let (consumer, producer) = (rb.consumer(), rb.producer());
+    assert!(rb.is_empty());
+    let in_data = (0..size).map(|i| i * 2).collect::<Vec<_>>();
+    producer.write(&in_data).unwrap();
+    assert!(rb.is_full());
+    rb.clear();
+    assert!(rb.is_empty());
+    producer.write(&in_data).unwrap();
+    assert!(rb.is_full());
+    let mut out_data = vec![0; size];
+    consumer.read(&mut out_data).unwrap();
+    assert_eq!(out_data, in_data);
+    assert!(rb.is_empty());
+}
+
+#[test]
 fn test_wrap_around() {
     let size = 128;
     let rb = SpscRb::new(size);
