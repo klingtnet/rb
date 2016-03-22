@@ -1,6 +1,7 @@
 # rb
 
-[![Build Status](https://travis-ci.com/klingtnet/rb.svg?token=drwE1YPs35oqracubtuf&branch=master)](https://travis-ci.com/klingtnet/rb)
+[![Build Status](https://travis-ci.com/klingtnet/rb.svg?token=drwE1YPs35oqracubtuf&branch=master)](https://travis-ci.com/klingtnet/rb) [![license](https://img.shields.io/badge/license-GPL-blue.svg)](https://github.com/klingtnet/rb/blob/master/LICENSE) [![Crates.io](https://img.shields.io/crates/v/rustc-serialize.svg)](https://crates.io/crates/rb) [![rustdoc](https://img.shields.io/badge/rustdoc-hosted-blue.svg)](https://docs.klingt.net/rustdoc/rb)
+
 
 A thread-safe fixed size circular (ring) buffer written in safe Rust.
 
