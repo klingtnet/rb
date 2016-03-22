@@ -1,7 +1,13 @@
 [package]
 name = "rb"
+description = "A thread-safe ring buffer with blocking IO"
+keywords = ["IO", "audio", "ring-buffer", "circular-buffer"]
 version = "0.1.0"
 authors = ["Andreas Linz <klingt.net@gmail.com>"]
+documentation = "https://docs.klingt.net/rustdoc/rb"
+repository = "https://github.com/klingtnet/rb"
+license = "GPL-3.0"
+readme = "README.md"
 
 [dependencies]
 
