@@ -93,6 +93,8 @@ impl<T: Clone + Default> RB<T> for SpscRb<T> {
     fn clear(&self) {
         let mut buf = self.buf.lock().unwrap();
         buf.iter_mut().map(|_| T::default()).count();
+        self.inspector.read_pos.store(0, Ordering::Relaxed);
+        self.inspector.write_pos.store(0, Ordering::Relaxed);
     }
 
     fn producer(&self) -> Producer<T> {
