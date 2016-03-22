@@ -29,7 +29,7 @@ pub trait RbProducer<T> {
     fn write(&self, &[T]) -> Result<usize>;
     /// Works analog to `write` but blocks until there are as much
     /// free slots in the ring buffer as there are elements in the given slice.
-    fn write_blocking(&self, &[T]) -> Result<usize>;
+    fn write_blocking(&self, &[T]) -> Option<usize>;
 }
 
 pub trait RbConsumer<T> {
@@ -38,7 +38,7 @@ pub trait RbConsumer<T> {
     fn read(&self, &mut [T]) -> Result<usize>;
     /// Works analog to `read` but blocks until the it can read enough elements to fill
     /// the given buffer slice.
-    fn read_blocking(&self, &mut [T]) -> Result<usize>;
+    fn read_blocking(&self, &mut [T]) -> Option<usize>;
 }
 
 #[derive(Debug)]
@@ -198,9 +198,9 @@ impl<T: Clone> RbProducer<T> for Producer<T> {
         return Ok(cnt);
     }
 
-    fn write_blocking(&self, data: &[T]) -> Result<usize> {
+    fn write_blocking(&self, data: &[T]) -> Option<usize> {
         if data.len() == 0 {
-            return Ok(0);
+            return None;
         }
         let guard = self.buf.lock().unwrap();
         let mut buf = if self.inspector.is_full() {
@@ -216,7 +216,7 @@ impl<T: Clone> RbProducer<T> for Producer<T> {
             self.inspector.write_pos.store(new_wr_pos, Ordering::Relaxed);
         }
         self.data_available.notify_one();
-        return Ok(cnt);
+        return Some(cnt);
     }
 }
 
@@ -236,13 +236,14 @@ impl<T: Clone> RbConsumer<T> for Consumer<T> {
             let new_re_pos = (re_pos + 1) % buf.len();
             self.inspector.read_pos.store(new_re_pos, Ordering::Relaxed);
         }
+        // TODO: Notify all? empty->slots_free
         self.slots_free.notify_one();
         Ok(cnt)
     }
 
-    fn read_blocking(&self, data: &mut [T]) -> Result<usize> {
+    fn read_blocking(&self, data: &mut [T]) -> Option<usize> {
         if data.len() == 0 {
-            return Ok(0);
+            return None;
         }
         let guard = self.buf.lock().unwrap();
         let buf = if self.inspector.is_empty() {
@@ -258,6 +259,6 @@ impl<T: Clone> RbConsumer<T> for Consumer<T> {
             self.inspector.read_pos.store(new_re_pos, Ordering::Relaxed);
         }
         self.slots_free.notify_one();
-        Ok(cnt)
+        Some(cnt)
     }
 }
