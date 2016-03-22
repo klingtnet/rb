@@ -8,5 +8,20 @@ A thread-safe fixed size circular (ring) buffer written in safe Rust.
 
 - thread-safe
 - blocking and non-blocking IO
-- fully tested
 - no unsafe blocks
+
+## Examples
+
+```sh
+cargo run --example saw
+```
+
+## Benchmark
+
+The benchmarking feature needs *rust nightly*.
+
+```sh
+multirust run nightly -- cargo bench
+```
+
+It takes on my `Intel(R) Core(TM) i5-2520M CPU @ 2.50GHz` about `16ms` to push 2.8 million samples through the buffer in blocking IO mode.

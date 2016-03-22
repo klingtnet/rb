@@ -3,44 +3,65 @@ use std::fmt;
 use std::sync::{Arc, Mutex, Condvar};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+/// Managment interface for the ring buffer.
 pub trait RB<T: Clone+Default> {
     /// Resets the whole buffer to the default value of type `T`.
+    /// The buffer is empty after this call.
     fn clear(&self);
+    /// Creates a *producer* view inside the buffer.
     fn producer(&self) -> Producer<T>;
+    /// Creates a *consumer* view inside the buffer.
     fn consumer(&self) -> Consumer<T>;
 }
 
+/// RbInspector provides non-modifying operations on the ring buffer.
 pub trait RbInspector {
     /// Returns true if the buffer is empty.
     fn is_empty(&self) -> bool;
     /// Returns true if the buffer is full.
     fn is_full(&self) -> bool;
     /// Returns the total capacity of the ring buffer.
+    /// This is the size with which the buffer was initialized.
     fn capacity(&self) -> usize;
-    /// Returns the number of values that can be written until the buffer is full.
+    /// Returns the number of values that can be written until the buffer until it is full.
     fn slots_free(&self) -> usize;
-    /// Returns the number of values that are available in the buffer.
+    /// Returns the number of values from the buffer that are available to read.
     fn count(&self) -> usize;
 }
 
+/// Defines *write* methods for a producer view.
 pub trait RbProducer<T> {
     /// Stores the given slice of data into the ring buffer.
-    /// Returns the number of written elements or an Error.
+    /// Returns the number of written elements or an error.
+    ///
+    /// Possible errors:
+    ///
+    /// - RbError::Full
     fn write(&self, &[T]) -> Result<usize>;
     /// Works analog to `write` but blocks until there are as much
     /// free slots in the ring buffer as there are elements in the given slice.
+    ///
+    /// Returns `None` if the given slice has zero length.
     fn write_blocking(&self, &[T]) -> Option<usize>;
 }
 
+/// Defines *read* methods for a consumer view.
 pub trait RbConsumer<T> {
     /// Fills the given slice with values or, if the buffer is empty, does not modify it.
     /// Returns the number of written values or an error.
+    ///
+    /// Possible errors:
+    ///
+    /// - RbError::Empty
     fn read(&self, &mut [T]) -> Result<usize>;
-    /// Works analog to `read` but blocks until the it can read enough elements to fill
+    /// Works analog to `read` but blocks until it can read enough elements to fill
     /// the given buffer slice.
+    ///
+    /// Returns `None` if the given slice has zero length.
     fn read_blocking(&self, &mut [T]) -> Option<usize>;
 }
 
+/// Ring buffer errors.
 #[derive(Debug)]
 pub enum RbError {
     Full,
@@ -55,6 +76,7 @@ impl fmt::Display for RbError {
     }
 }
 
+/// Result type used inside the module.
 pub type Result<T> = ::std::result::Result<T, RbError>;
 
 struct Inspector {
@@ -65,8 +87,30 @@ struct Inspector {
 
 /// A *thread-safe* Single-Producer-Single-Consumer RingBuffer
 ///
+/// - blocking and non-blocking IO
 /// - mutually exclusive access for producer and consumer
-/// TODO: Remove SPSC because the buffer can be used as MPMC
+/// - no use of `unsafe`
+///
+/// ```
+/// use std::thread;
+/// use rb::*;
+///
+/// let rb = SpscRb::new(1024);
+/// let (prod, cons) = (rb.producer(), rb.consumer());
+/// thread::spawn(move || {
+///     let gen = || {(-16..16+1).cycle().map(|x| x as f32/16.0)};
+///     loop {
+///         let data = gen().take(32).collect::<Vec<f32>>();
+///         prod.write(&data).unwrap();
+///     }
+/// });
+/// let mut data = Vec::with_capacity(1024);
+/// let mut buf = [0.0f32; 256];
+/// while data.len() < 1024 {
+///     let cnt = cons.read_blocking(&mut buf).unwrap();
+///     data.extend_from_slice(&buf[..cnt]);
+/// }
+/// ```
 pub struct SpscRb<T> {
     buf: Arc<Mutex<Vec<T>>>,
     inspector: Arc<Inspector>,
@@ -161,7 +205,6 @@ impl RbInspector for Inspector {
 }
 
 /// Producer view into the ring buffer.
-/// Provides a write method.
 pub struct Producer<T> {
     buf: Arc<Mutex<Vec<T>>>,
     inspector: Arc<Inspector>,
@@ -170,7 +213,6 @@ pub struct Producer<T> {
 }
 
 /// Consumer view into the ring buffer.
-/// Provides a read method.
 pub struct Consumer<T> {
     buf: Arc<Mutex<Vec<T>>>,
     inspector: Arc<Inspector>,
