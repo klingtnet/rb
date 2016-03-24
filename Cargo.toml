@@ -6,7 +6,7 @@ version = "0.1.0"
 authors = ["Andreas Linz <klingt.net@gmail.com>"]
 documentation = "https://docs.klingt.net/rustdoc/rb"
 repository = "https://github.com/klingtnet/rb"
-license = "GPL-3.0"
+license = "MIT/Apache-2.0"
 readme = "README.md"
 
 [dependencies]
