@@ -8,6 +8,24 @@ pub trait RB<T: Clone+Default> {
     /// Resets the whole buffer to the default value of type `T`.
     /// The buffer is empty after this call.
     fn clear(&self);
+    /// Skips all pending values.
+    /// Technically it sets the read pointer of the producer to the position
+    /// of the conumers write pointer.
+    ///
+    /// Returns the number of skipped elements.
+    ///
+    /// Possible errors:
+    ///
+    /// - `RbError::Empty` no pending elements
+    fn skip_pending(&self) -> Result<usize>;
+    /// Skips `cnt` number of elements.
+    ///
+    /// Returns the number of skipped elements.
+    ///
+    /// Possible errors:
+    ///
+    /// - `RbError::Empty` no pending elements
+    fn skip(&self, cnt: usize) -> Result<usize>;
     /// Creates a *producer* view inside the buffer.
     fn producer(&self) -> Producer<T>;
     /// Creates a *consumer* view inside the buffer.
@@ -140,6 +158,29 @@ impl<T: Clone + Default> RB<T> for SpscRb<T> {
         buf.iter_mut().map(|_| T::default()).count();
         self.inspector.read_pos.store(0, Ordering::Relaxed);
         self.inspector.write_pos.store(0, Ordering::Relaxed);
+    }
+
+    fn skip_pending(&self) -> Result<usize> {
+        if self.is_empty() {
+            Err(RbError::Empty)
+        } else {
+            // TODO check Order value
+            let write_pos = self.inspector.write_pos.load(Ordering::Relaxed);
+            let count = self.count();
+            self.inspector.read_pos.store(write_pos, Ordering::Relaxed);
+            Ok(count)
+        }
+    }
+
+    fn skip(&self, cnt: usize) -> Result<usize> {
+        if self.is_empty() {
+            Err(RbError::Empty)
+        } else {
+            let count = cmp::min(cnt, self.count());
+            let prev_read_pos = self.inspector.read_pos.load(Ordering::Relaxed);
+            self.inspector.read_pos.store(prev_read_pos + count, Ordering::Relaxed);
+            Ok(count)
+        }
     }
 
     fn producer(&self) -> Producer<T> {
