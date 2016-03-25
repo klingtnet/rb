@@ -54,7 +54,7 @@ pub trait RbProducer<T> {
     ///
     /// Possible errors:
     ///
-    /// - RbError::Full
+    /// - `RbError::Full`
     fn write(&self, &[T]) -> Result<usize>;
     /// Works analog to `write` but blocks until there are as much
     /// free slots in the ring buffer as there are elements in the given slice.
