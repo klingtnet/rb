@@ -277,12 +277,13 @@ impl<T: Clone> RbProducer<T> for Producer<T> {
         }
         let cnt = cmp::min(data.len(), self.inspector.slots_free());
         let mut buf = self.buf.lock().unwrap();
+        let buf_len = buf.len();
+        let mut wr_pos = self.inspector.write_pos.load(Ordering::Relaxed);
         for idx in 0..cnt {
-            let wr_pos = self.inspector.write_pos.load(Ordering::Relaxed);
             buf[wr_pos] = data[idx].clone();
-            let new_wr_pos = (wr_pos + 1) % buf.len();
-            self.inspector.write_pos.store(new_wr_pos, Ordering::Relaxed);
+            wr_pos = (wr_pos + 1) % buf_len;
         }
+        self.inspector.write_pos.store(wr_pos, Ordering::Relaxed);
         self.data_available.notify_one();
         return Ok(cnt);
     }
@@ -297,13 +298,14 @@ impl<T: Clone> RbProducer<T> for Producer<T> {
         } else {
             guard
         };
+        let buf_len = buf.len();
+        let mut wr_pos = self.inspector.write_pos.load(Ordering::Relaxed);
         let cnt = cmp::min(data.len(), self.inspector.slots_free());
         for idx in 0..cnt {
-            let wr_pos = self.inspector.write_pos.load(Ordering::Relaxed);
             buf[wr_pos] = data[idx].clone();
-            let new_wr_pos = (wr_pos + 1) % buf.len();
-            self.inspector.write_pos.store(new_wr_pos, Ordering::Relaxed);
+            wr_pos = (wr_pos + 1) % buf_len;
         }
+        self.inspector.write_pos.store(wr_pos, Ordering::Relaxed);
         self.data_available.notify_one();
         return Some(cnt);
     }
@@ -319,13 +321,14 @@ impl<T: Clone> RbConsumer<T> for Consumer<T> {
         }
         let cnt = cmp::min(data.len(), self.inspector.count());
         let buf = self.buf.lock().unwrap();
+        let buf_len = buf.len();
+        let mut re_pos = self.inspector.read_pos.load(Ordering::Relaxed);
         for idx in 0..cnt {
-            let re_pos = self.inspector.read_pos.load(Ordering::Relaxed);
             data[idx] = buf[re_pos].clone();
-            let new_re_pos = (re_pos + 1) % buf.len();
-            self.inspector.read_pos.store(new_re_pos, Ordering::Relaxed);
+            re_pos = (re_pos + 1) % buf_len;
         }
         // TODO: Notify all? empty->slots_free
+        self.inspector.read_pos.store(re_pos, Ordering::Relaxed);
         self.slots_free.notify_one();
         Ok(cnt)
     }
@@ -340,13 +343,14 @@ impl<T: Clone> RbConsumer<T> for Consumer<T> {
         } else {
             guard
         };
+        let buf_len = buf.len();
         let cnt = cmp::min(data.len(), self.inspector.count());
+        let mut re_pos = self.inspector.read_pos.load(Ordering::Relaxed);
         for idx in 0..cnt {
-            let re_pos = self.inspector.read_pos.load(Ordering::Relaxed);
             data[idx] = buf[re_pos].clone();
-            let new_re_pos = (re_pos + 1) % buf.len();
-            self.inspector.read_pos.store(new_re_pos, Ordering::Relaxed);
+            re_pos = (re_pos + 1) % buf_len;
         }
+        self.inspector.read_pos.store(re_pos, Ordering::Relaxed);
         self.slots_free.notify_one();
         Some(cnt)
     }
