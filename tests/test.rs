@@ -94,3 +94,21 @@ fn test_skip() {
     assert!(consumer.skip(1).is_err());
     assert!(consumer.skip_pending().is_err());
 }
+
+#[test]
+fn test_get() {
+    const SIZE: usize = 128;
+    let rb = SpscRb::new(SIZE);
+    let (consumer, producer) = (rb.consumer(), rb.producer());
+    let in_data = (0..SIZE).collect::<Vec<_>>();
+    assert_eq!(producer.write(&in_data).unwrap(), SIZE);
+    let mut out_data = vec![0; SIZE];
+    assert_eq!(consumer.get(&mut out_data).unwrap(), SIZE);
+    assert_eq!(out_data, in_data);
+    assert!(rb.is_full());
+    assert_eq!(consumer.get(&mut out_data).unwrap(), SIZE);
+    assert_eq!(out_data, in_data);
+    assert!(rb.is_full());
+    assert_eq!(consumer.skip_pending().unwrap(), SIZE);
+    assert!(rb.is_empty());
+}

@@ -66,6 +66,20 @@ pub trait RbConsumer<T> {
     /// - `RbError::Empty` no pending elements
     fn skip(&self, cnt: usize) -> Result<usize>;
     /// Fills the given slice with values or, if the buffer is empty, does not modify it.
+    /// This method does not change the state of the buffer, this means that the read pointer
+    /// isn't changed if you call `get`. Consecutive calls to this method are idempotent, i.e. they
+    /// will fill the given slice with the same data.
+    /// Using `get` can be beneficial to `read` when a successive call has failed and you want to
+    /// try again with same data. You can use `skip` to move the read pointer i.e. mark the values
+    /// as read after the call succeeded.
+    ///
+    /// Returns the number of written values or an error.
+    ///
+    /// Possible errors:
+    ///
+    /// - RbError::Empty
+    fn get(&self, &mut [T]) -> Result<usize>;
+    /// Fills the given slice with values or, if the buffer is empty, does not modify it.
     /// Returns the number of written values or an error.
     ///
     /// Possible errors:
@@ -310,6 +324,24 @@ impl<T: Clone> RbConsumer<T> for Consumer<T> {
             self.inspector.read_pos.store(prev_read_pos + count, Ordering::Relaxed);
             Ok(count)
         }
+    }
+
+    fn get(&self, data: &mut [T]) -> Result<usize> {
+        if data.len() == 0 {
+            return Ok(0);
+        }
+        if self.inspector.is_empty() {
+            return Err(RbError::Empty);
+        }
+        let cnt = cmp::min(data.len(), self.inspector.count());
+        let buf = self.buf.lock().unwrap();
+        let buf_len = buf.len();
+        let re_pos = self.inspector.read_pos.load(Ordering::Relaxed);
+        for idx in 0..cnt {
+            let buf_idx = (idx + re_pos) % buf_len;
+            data[idx] = buf[buf_idx].clone();
+        }
+        Ok(cnt)
     }
 
     fn read(&self, data: &mut [T]) -> Result<usize> {
