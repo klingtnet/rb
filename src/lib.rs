@@ -220,18 +220,22 @@ impl<T: Clone + Default> RbInspector for SpscRb<T> {
 }
 
 impl RbInspector for Inspector {
+    #[inline(always)]
     fn is_empty(&self) -> bool {
         self.slots_free() == self.capacity()
     }
 
+    #[inline(always)]
     fn is_full(&self) -> bool {
         self.slots_free() == 0
     }
 
+    #[inline(always)]
     fn capacity(&self) -> usize {
         self.size - 1
     }
 
+    #[inline(always)]
     fn slots_free(&self) -> usize {
         let wr_pos = self.write_pos.load(Ordering::Relaxed);
         let re_pos = self.read_pos.load(Ordering::Relaxed);
@@ -241,6 +245,7 @@ impl RbInspector for Inspector {
         }
     }
 
+    #[inline(always)]
     fn count(&self) -> usize {
         self.capacity() - self.slots_free()
     }
