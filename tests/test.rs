@@ -81,16 +81,16 @@ fn test_wrap_around() {
 fn test_skip() {
     const SIZE: usize = 128;
     let rb = SpscRb::new(SIZE);
-    let producer = rb.producer();
+    let (consumer, producer) = (rb.consumer(), rb.producer());
     let in_data = (0..SIZE/2).collect::<Vec<_>>();
     let write_cnt = producer.write(&in_data).unwrap();
     assert_eq!(write_cnt, SIZE/2);
     assert_eq!(rb.count(), SIZE/2);
-    let skipped = rb.skip(10).unwrap();
+    let skipped = consumer.skip(10).unwrap();
     assert_eq!(skipped, 10);
     assert_eq!(rb.count(), (SIZE/2)-10);
-    rb.skip_pending();
+    assert!(consumer.skip_pending().is_ok());
     assert!(rb.is_empty());
-    assert!(rb.skip(1).is_err());
-    assert!(rb.skip_pending().is_err());
+    assert!(consumer.skip(1).is_err());
+    assert!(consumer.skip_pending().is_err());
 }

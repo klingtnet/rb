@@ -8,24 +8,6 @@ pub trait RB<T: Clone+Default> {
     /// Resets the whole buffer to the default value of type `T`.
     /// The buffer is empty after this call.
     fn clear(&self);
-    /// Skips all pending values.
-    /// Technically it sets the read pointer of the producer to the position
-    /// of the conumers write pointer.
-    ///
-    /// Returns the number of skipped elements.
-    ///
-    /// Possible errors:
-    ///
-    /// - `RbError::Empty` no pending elements
-    fn skip_pending(&self) -> Result<usize>;
-    /// Skips `cnt` number of elements.
-    ///
-    /// Returns the number of skipped elements.
-    ///
-    /// Possible errors:
-    ///
-    /// - `RbError::Empty` no pending elements
-    fn skip(&self, cnt: usize) -> Result<usize>;
     /// Creates a *producer* view inside the buffer.
     fn producer(&self) -> Producer<T>;
     /// Creates a *consumer* view inside the buffer.
@@ -65,6 +47,24 @@ pub trait RbProducer<T> {
 
 /// Defines *read* methods for a consumer view.
 pub trait RbConsumer<T> {
+    /// Skips all pending values.
+    /// Technically it sets the read pointer of the producer to the position
+    /// of the conumers write pointer.
+    ///
+    /// Returns the number of skipped elements.
+    ///
+    /// Possible errors:
+    ///
+    /// - `RbError::Empty` no pending elements
+    fn skip_pending(&self) -> Result<usize>;
+    /// Skips `cnt` number of elements.
+    ///
+    /// Returns the number of skipped elements.
+    ///
+    /// Possible errors:
+    ///
+    /// - `RbError::Empty` no pending elements
+    fn skip(&self, cnt: usize) -> Result<usize>;
     /// Fills the given slice with values or, if the buffer is empty, does not modify it.
     /// Returns the number of written values or an error.
     ///
@@ -158,29 +158,6 @@ impl<T: Clone + Default> RB<T> for SpscRb<T> {
         buf.iter_mut().map(|_| T::default()).count();
         self.inspector.read_pos.store(0, Ordering::Relaxed);
         self.inspector.write_pos.store(0, Ordering::Relaxed);
-    }
-
-    fn skip_pending(&self) -> Result<usize> {
-        if self.is_empty() {
-            Err(RbError::Empty)
-        } else {
-            // TODO check Order value
-            let write_pos = self.inspector.write_pos.load(Ordering::Relaxed);
-            let count = self.count();
-            self.inspector.read_pos.store(write_pos, Ordering::Relaxed);
-            Ok(count)
-        }
-    }
-
-    fn skip(&self, cnt: usize) -> Result<usize> {
-        if self.is_empty() {
-            Err(RbError::Empty)
-        } else {
-            let count = cmp::min(cnt, self.count());
-            let prev_read_pos = self.inspector.read_pos.load(Ordering::Relaxed);
-            self.inspector.read_pos.store(prev_read_pos + count, Ordering::Relaxed);
-            Ok(count)
-        }
     }
 
     fn producer(&self) -> Producer<T> {
@@ -312,6 +289,29 @@ impl<T: Clone> RbProducer<T> for Producer<T> {
 }
 
 impl<T: Clone> RbConsumer<T> for Consumer<T> {
+    fn skip_pending(&self) -> Result<usize> {
+        if self.inspector.is_empty() {
+            Err(RbError::Empty)
+        } else {
+            // TODO check Order value
+            let write_pos = self.inspector.write_pos.load(Ordering::Relaxed);
+            let count = self.inspector.count();
+            self.inspector.read_pos.store(write_pos, Ordering::Relaxed);
+            Ok(count)
+        }
+    }
+
+    fn skip(&self, cnt: usize) -> Result<usize> {
+        if self.inspector.is_empty() {
+            Err(RbError::Empty)
+        } else {
+            let count = cmp::min(cnt, self.inspector.count());
+            let prev_read_pos = self.inspector.read_pos.load(Ordering::Relaxed);
+            self.inspector.read_pos.store(prev_read_pos + count, Ordering::Relaxed);
+            Ok(count)
+        }
+    }
+
     fn read(&self, data: &mut [T]) -> Result<usize> {
         if data.len() == 0 {
             return Ok(0);
