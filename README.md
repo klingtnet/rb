@@ -28,7 +28,8 @@ The benchmarking feature needs *rust nightly*.
 multirust run nightly -- cargo bench
 ```
 
-It takes on my `Intel(R) Core(TM) i5-2520M CPU @ 2.50GHz` about `16ms` to push 2.8 million samples through the buffer in blocking IO mode.
+It takes on my `Intel(R) Core(TM) i5-2520M CPU @ 2.50GHz` using `Rust nightly 1.9.0` about ~~`16ms`~~ `15ms` to push 2.8 million samples through the buffer in blocking IO mode.
+The deviation of the benchmark is about as large as the benchmark result itself, so please take the iteration time with a grain of salt.
 
 ## License
 
