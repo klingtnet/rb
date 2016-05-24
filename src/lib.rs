@@ -1,6 +1,9 @@
+extern crate parking_lot;
+
 use std::cmp;
 use std::fmt;
-use std::sync::{Arc, Mutex, Condvar};
+use std::sync::Arc;
+use parking_lot::{Mutex, Condvar};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 /// Managment interface for the ring buffer.
@@ -168,7 +171,7 @@ impl<T: Clone + Default> SpscRb<T> {
 }
 impl<T: Clone + Default> RB<T> for SpscRb<T> {
     fn clear(&self) {
-        let mut buf = self.buf.lock().unwrap();
+        let mut buf = self.buf.lock();
         buf.iter_mut().map(|_| T::default()).count();
         self.inspector.read_pos.store(0, Ordering::Relaxed);
         self.inspector.write_pos.store(0, Ordering::Relaxed);
@@ -267,7 +270,7 @@ impl<T: Clone> RbProducer<T> for Producer<T> {
             return Err(RbError::Full);
         }
         let cnt = cmp::min(data.len(), self.inspector.slots_free());
-        let mut buf = self.buf.lock().unwrap();
+        let mut buf = self.buf.lock();
         let buf_len = buf.len();
         let mut wr_pos = self.inspector.write_pos.load(Ordering::Relaxed);
         for idx in 0..cnt {
@@ -283,9 +286,10 @@ impl<T: Clone> RbProducer<T> for Producer<T> {
         if data.len() == 0 {
             return None;
         }
-        let guard = self.buf.lock().unwrap();
+        let mut guard = self.buf.lock();
         let mut buf = if self.inspector.is_full() {
-            self.slots_free.wait(guard).unwrap()
+            self.slots_free.wait(&mut guard);
+            guard
         } else {
             guard
         };
@@ -334,7 +338,7 @@ impl<T: Clone> RbConsumer<T> for Consumer<T> {
             return Err(RbError::Empty);
         }
         let cnt = cmp::min(data.len(), self.inspector.count());
-        let buf = self.buf.lock().unwrap();
+        let buf = self.buf.lock();
         let buf_len = buf.len();
         let re_pos = self.inspector.read_pos.load(Ordering::Relaxed);
         for idx in 0..cnt {
@@ -352,7 +356,7 @@ impl<T: Clone> RbConsumer<T> for Consumer<T> {
             return Err(RbError::Empty);
         }
         let cnt = cmp::min(data.len(), self.inspector.count());
-        let buf = self.buf.lock().unwrap();
+        let buf = self.buf.lock();
         let buf_len = buf.len();
         let mut re_pos = self.inspector.read_pos.load(Ordering::Relaxed);
         for idx in 0..cnt {
@@ -369,9 +373,10 @@ impl<T: Clone> RbConsumer<T> for Consumer<T> {
         if data.len() == 0 {
             return None;
         }
-        let guard = self.buf.lock().unwrap();
+        let mut guard = self.buf.lock();
         let buf = if self.inspector.is_empty() {
-            self.data_available.wait(guard).unwrap()
+            self.data_available.wait(&mut guard);
+            guard
         } else {
             guard
         };

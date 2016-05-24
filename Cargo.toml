@@ -10,6 +10,7 @@ license = "MIT/Apache-2.0"
 readme = "README.md"
 
 [dependencies]
+parking_lot = "0.2.*"
 
 [dev-dependencies]
 rand = "0.3.14"
