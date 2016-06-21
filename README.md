@@ -1,6 +1,7 @@
 # rb
 
 [![Build Status](https://travis-ci.org/klingtnet/rb.svg?branch=master)](https://travis-ci.org/klingtnet/rb)
+[![Build Status (appveyor)](https://ci.appveyor.com/api/projects/status/ixq6ai1c96ggm4fr?svg=true)](https://ci.appveyor.com/project/klingtnet/rb)
 ![license](https://img.shields.io/badge/license-MIT%2FApache%202.0-blue.svg)
 [![rustdoc](https://img.shields.io/badge/rustdoc-hosted-blue.svg)](https://docs.klingt.net/rustdoc/rb)
 
