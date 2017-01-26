@@ -38,8 +38,8 @@ pub trait RbProducer<T> {
     ///
     /// - `RbError::Full`
     fn write(&self, &[T]) -> Result<usize>;
-    /// Works analog to `write` but blocks until there are as much
-    /// free slots in the ring buffer as there are elements in the given slice.
+    /// Works analog to `write` but blocks until there are free slots in the ring buffer.
+    /// The number of actual blocks written is returned in the `Option` value.
     ///
     /// Returns `None` if the given slice has zero length.
     fn write_blocking(&self, &[T]) -> Option<usize>;
@@ -86,8 +86,10 @@ pub trait RbConsumer<T> {
     ///
     /// - RbError::Empty
     fn read(&self, &mut [T]) -> Result<usize>;
-    /// Works analog to `read` but blocks until it can read enough elements to fill
+    /// Works analog to `read` but blocks until it can read elements to fill
     /// the given buffer slice.
+    /// The number of blocks read is not necessarily equal to the length of the given buffer slice,
+    /// the exact number is returned in the `Option` value.
     ///
     /// Returns `None` if the given slice has zero length.
     fn read_blocking(&self, &mut [T]) -> Option<usize>;
