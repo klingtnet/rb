@@ -82,13 +82,13 @@ fn test_skip() {
     const SIZE: usize = 128;
     let rb = SpscRb::new(SIZE);
     let (consumer, producer) = (rb.consumer(), rb.producer());
-    let in_data = (0..SIZE/2).collect::<Vec<_>>();
+    let in_data = (0..SIZE / 2).collect::<Vec<_>>();
     let write_cnt = producer.write(&in_data).unwrap();
-    assert_eq!(write_cnt, SIZE/2);
-    assert_eq!(rb.count(), SIZE/2);
+    assert_eq!(write_cnt, SIZE / 2);
+    assert_eq!(rb.count(), SIZE / 2);
     let skipped = consumer.skip(10).unwrap();
     assert_eq!(skipped, 10);
-    assert_eq!(rb.count(), (SIZE/2)-10);
+    assert_eq!(rb.count(), (SIZE / 2) - 10);
     assert!(consumer.skip_pending().is_ok());
     assert!(rb.is_empty());
     assert!(consumer.skip(1).is_err());

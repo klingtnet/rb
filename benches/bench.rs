@@ -21,16 +21,12 @@ fn bench_passing_1min_audio_samples_blocking(b: &mut Bencher) {
     let mut rng = XorShiftRng::new_unseeded();
     // generate some noise
     let data = (0..1024).map(|_| rng.gen_range(-1.0f32, 1.0f32)).collect::<Vec<f32>>();
-    thread::spawn(move|| {
-        loop {
-            producer.write_blocking(&data).unwrap();
-        }
+    thread::spawn(move || loop {
+        producer.write_blocking(&data).unwrap();
     });
     let mut buf = [0f32; 1024];
-    b.iter(|| {
-        while sample_cnt > 0 {
-            let cnt = consumer.read_blocking(&mut buf).unwrap();
-            sample_cnt -= cnt as isize;
-        }
+    b.iter(|| while sample_cnt > 0 {
+        let cnt = consumer.read_blocking(&mut buf).unwrap();
+        sample_cnt -= cnt as isize;
     })
 }

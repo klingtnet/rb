@@ -14,12 +14,10 @@ fn test_threads() {
     let mut out_data = Vec::with_capacity(size);
 
     const WRITE_BUF_SIZE: usize = 32;
-    thread::spawn(move || {
-        for i in 0..(size / WRITE_BUF_SIZE) {
-            let cnt = producer.write(&in_data_copy[i * WRITE_BUF_SIZE..(i + 1) * WRITE_BUF_SIZE])
-                              .unwrap();
-            assert_eq!(cnt, WRITE_BUF_SIZE);
-        }
+    thread::spawn(move || for i in 0..(size / WRITE_BUF_SIZE) {
+        let cnt = producer.write(&in_data_copy[i * WRITE_BUF_SIZE..(i + 1) * WRITE_BUF_SIZE])
+            .unwrap();
+        assert_eq!(cnt, WRITE_BUF_SIZE);
     });
 
     const READ_BUF_SIZE: usize = 8;
@@ -46,13 +44,11 @@ fn test_threads_blocking() {
     let mut out_data = Vec::with_capacity(size);
 
     const WRITE_BUF_SIZE: usize = 32;
-    thread::spawn(move || {
-        for i in 0..(size / WRITE_BUF_SIZE) {
-            let cnt = producer.write_blocking(&in_data_copy[i * WRITE_BUF_SIZE..(i + 1) *
-                                                                                WRITE_BUF_SIZE])
-                              .unwrap();
-            assert_eq!(cnt, WRITE_BUF_SIZE);
-        }
+    thread::spawn(move || for i in 0..(size / WRITE_BUF_SIZE) {
+        let cnt =
+            producer.write_blocking(&in_data_copy[i * WRITE_BUF_SIZE..(i + 1) * WRITE_BUF_SIZE])
+                .unwrap();
+        assert_eq!(cnt, WRITE_BUF_SIZE);
     });
 
     const READ_BUF_SIZE: usize = 8;

@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex, Condvar};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 /// Managment interface for the ring buffer.
-pub trait RB<T: Clone+Default> {
+pub trait RB<T: Clone + Default> {
     /// Resets the whole buffer to the default value of type `T`.
     /// The buffer is empty after this call.
     fn clear(&self);
