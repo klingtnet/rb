@@ -9,5 +9,6 @@ matrix:
         - rust: nightly
     include:
         - rust: nightly
-          script:
-              - cargo bench
+script:
+  - cargo bench
+  - cargo test --release
