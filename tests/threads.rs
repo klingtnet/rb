@@ -75,7 +75,6 @@ fn test_threads_count_underflow() {
 
     thread::spawn(move || for _ in 0..ITERATIONS {
         producer.write_blocking(&in_data).unwrap();
-        thread::sleep(::std::time::Duration::from_millis(1));
     });
 
     for _ in 0..ITERATIONS {
