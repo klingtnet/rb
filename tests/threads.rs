@@ -61,3 +61,30 @@ fn test_threads_blocking() {
     assert_eq!(in_data, out_data);
     assert!(rb.is_empty());
 }
+
+#[test]
+fn test_threads_count_underflow() {
+    const SIZE: usize = 1024 * 8;
+    const WRITE_BUF_SIZE: usize = 100;
+    const READ_BUF_SIZE: usize = 2048;
+    const ITERATIONS: usize = 1000000;
+    let rb = SpscRb::new(SIZE);
+    let producer = rb.producer();
+    let consumer = rb.consumer();
+    let in_data = [0; WRITE_BUF_SIZE];
+
+    thread::spawn(move || for _ in 0..ITERATIONS {
+        producer.write_blocking(&in_data).unwrap();
+        thread::sleep(::std::time::Duration::from_millis(1));
+    });
+
+    for _ in 0..ITERATIONS {
+        let mut buf = [0; READ_BUF_SIZE];
+        if rb.count() < READ_BUF_SIZE {
+            continue;
+        } else {
+            consumer.skip(rb.count() - READ_BUF_SIZE).unwrap();
+            consumer.get(&mut buf).unwrap();
+        }
+    }
+}
