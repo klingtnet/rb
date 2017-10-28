@@ -9,24 +9,24 @@ use std::thread;
 use rand::{Rng, XorShiftRng};
 use test::Bencher;
 
-/// Measure the time that it takes to pass 1 min of. audio through the buffer.
-/// Given a sample-rate of 48kHz and duration of 60sec we get 2.880,000 samples for one channel of audio.
-/// The ring-buffer's internal size will be 1024 samples, which results in a latency of 21ms = 1000ms*(1024/48_000).
+
 #[bench]
-fn bench_passing_1min_audio_samples_blocking(b: &mut Bencher) {
-    let mut sample_cnt: isize = 48_000 * 60;
-    let rb = SpscRb::new(1024);
+/// Benchmark the time it takes to blocking read and write a 1k buffer of f32 elements.
+fn bench_passing_a_1k_buffer_blocking(b: &mut Bencher) {
+    const SIZE: usize = 1024;
+    let rb = SpscRb::new(SIZE);
     let producer = rb.producer();
     let consumer = rb.consumer();
     let mut rng = XorShiftRng::new_unseeded();
-    // generate some noise
-    let data = (0..1024).map(|_| rng.gen_range(-1.0f32, 1.0f32)).collect::<Vec<f32>>();
+    let data = (0..SIZE)
+        .map(|_| rng.gen_range(-1.0f32, 1.0f32))
+        .collect::<Vec<f32>>();
     thread::spawn(move || loop {
         producer.write_blocking(&data).unwrap();
     });
-    let mut buf = [0f32; 1024];
-    b.iter(|| while sample_cnt > 0 {
+    let mut buf = [0f32; SIZE];
+    b.iter(|| {
         let cnt = consumer.read_blocking(&mut buf).unwrap();
-        sample_cnt -= cnt as isize;
-    })
+        assert_eq!(cnt, SIZE);
+    });
 }
