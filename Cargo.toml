@@ -2,9 +2,9 @@
 name = "rb"
 description = "A thread-safe ring buffer with blocking IO"
 keywords = ["IO", "audio", "ring-buffer", "circular-buffer"]
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Andreas Linz <klingt.net@gmail.com>"]
-documentation = "https://docs.klingt.net/rustdoc/rb"
+documentation = "https://docs.rs/rb"
 repository = "https://github.com/klingtnet/rb"
 license = "MIT/Apache-2.0"
 readme = "README.md"
