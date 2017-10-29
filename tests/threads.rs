@@ -15,7 +15,8 @@ fn test_threads() {
 
     const WRITE_BUF_SIZE: usize = 32;
     thread::spawn(move || for i in 0..(size / WRITE_BUF_SIZE) {
-        let cnt = producer.write(&in_data_copy[i * WRITE_BUF_SIZE..(i + 1) * WRITE_BUF_SIZE])
+        let cnt = producer
+            .write(&in_data_copy[i * WRITE_BUF_SIZE..(i + 1) * WRITE_BUF_SIZE])
             .unwrap();
         assert_eq!(cnt, WRITE_BUF_SIZE);
     });
@@ -45,9 +46,9 @@ fn test_threads_blocking() {
 
     const WRITE_BUF_SIZE: usize = 32;
     thread::spawn(move || for i in 0..(size / WRITE_BUF_SIZE) {
-        let cnt =
-            producer.write_blocking(&in_data_copy[i * WRITE_BUF_SIZE..(i + 1) * WRITE_BUF_SIZE])
-                .unwrap();
+        let cnt = producer
+            .write_blocking(&in_data_copy[i * WRITE_BUF_SIZE..(i + 1) * WRITE_BUF_SIZE])
+            .unwrap();
         assert_eq!(cnt, WRITE_BUF_SIZE);
     });
 

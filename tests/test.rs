@@ -62,7 +62,7 @@ fn test_wrap_around() {
     let in_data = (0..SIZE * 2).map(|i| i * 2).collect::<Vec<_>>();
     producer.write(&in_data[0..64]).unwrap();
     assert_eq!(rb.count(), 64);
-    let mut out_data = vec![0; SIZE*2];
+    let mut out_data = vec![0; SIZE * 2];
     // TODO: try to read more
     consumer.read(&mut out_data[0..64]).unwrap();
     assert!(rb.is_empty());
