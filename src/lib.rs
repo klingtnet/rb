@@ -281,7 +281,7 @@ impl<T: Clone + Copy> RbProducer<T> for Producer<T> {
         } else {
             let d = buf_len - wr_pos;
             buf[wr_pos..].copy_from_slice(&data[..d]);
-            buf[..(cnt - d)].copy_from_slice(&data[d..]);
+            buf[..(cnt - d)].copy_from_slice(&data[d..cnt]);
         }
         self.inspector.write_pos.store(
             (wr_pos + cnt) % buf_len,
@@ -312,7 +312,7 @@ impl<T: Clone + Copy> RbProducer<T> for Producer<T> {
         } else {
             let d = buf_len - wr_pos;
             buf[wr_pos..].copy_from_slice(&data[..d]);
-            buf[..(cnt - d)].copy_from_slice(&data[d..]);
+            buf[..(cnt - d)].copy_from_slice(&data[d..cnt]);
         }
         self.inspector.write_pos.store(
             (wr_pos + cnt) % buf_len,
@@ -391,7 +391,7 @@ impl<T: Clone + Copy> RbConsumer<T> for Consumer<T> {
         } else {
             let d = buf_len - re_pos;
             data[..d].copy_from_slice(&buf[re_pos..]);
-            data[d..].copy_from_slice(&buf[..(cnt - d)]);
+            data[d..cnt].copy_from_slice(&buf[..(cnt - d)]);
         }
 
         // TODO: Notify all? empty->slots_free
@@ -422,7 +422,7 @@ impl<T: Clone + Copy> RbConsumer<T> for Consumer<T> {
         } else {
             let d = buf_len - re_pos;
             data[..d].copy_from_slice(&buf[re_pos..]);
-            data[d..].copy_from_slice(&buf[..(cnt - d)]);
+            data[d..cnt].copy_from_slice(&buf[..(cnt - d)]);
         }
 
         self.inspector.read_pos.store(
