@@ -48,8 +48,8 @@ pub trait RbProducer<T> {
 /// Defines *read* methods for a consumer view.
 pub trait RbConsumer<T> {
     /// Skips all pending values.
-    /// Technically it sets the read pointer of the producer to the position
-    /// of the conumers write pointer.
+    /// Technically it sets the consumer's read pointer to the position
+    /// of the producer's write pointer.
     ///
     /// Returns the number of skipped elements.
     ///
