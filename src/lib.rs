@@ -368,7 +368,7 @@ impl<T: Clone + Copy> RbConsumer<T> for Consumer<T> {
         } else {
             let d = buf_len - re_pos;
             data[..d].copy_from_slice(&buf[re_pos..]);
-            data[d..].copy_from_slice(&buf[..(cnt - d)]);
+            data[d..cnt].copy_from_slice(&buf[..(cnt - d)]);
         }
 
         Ok(cnt)
@@ -540,12 +540,29 @@ mod tests {
         let rb = SpscRb::new(1);
         let (consumer, producer) = (rb.consumer(), rb.producer());
         let a = [1];
-        producer.write(&a).unwrap();
+        assert_eq!(producer.write(&a).unwrap(), 1);
         let mut b = [0];
         consumer.read(&mut b).unwrap();
         assert_eq!(b[0], 1);
         let c = [2, 3];
-        producer.write(&c).unwrap();
+        assert_eq!(producer.write(&c).unwrap(), 1);
+        let mut d = [0, 0];
+        consumer.get(&mut d).unwrap();
+        assert_eq!(d[0], 2);
+        assert_eq!(d[1], 0);
+    }
+
+    #[test]
+    fn get_with_wrapping_2() {
+        let rb = SpscRb::new(2);
+        let (consumer, producer) = (rb.consumer(), rb.producer());
+        let a = [1];
+        assert_eq!(producer.write(&a).unwrap(), 1);
+        let mut b = [0];
+        consumer.read(&mut b).unwrap();
+        assert_eq!(b[0], 1);
+        let c = [2, 3];
+        assert_eq!(producer.write(&c).unwrap(), 2);
         let mut d = [0, 0];
         consumer.get(&mut d).unwrap();
         assert_eq!(d[0], 2);
