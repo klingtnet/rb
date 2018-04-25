@@ -489,11 +489,12 @@ mod tests {
     fn get_from_empty_buffer_returns_error() {
         let rb = SpscRb::new(1);
         let (consumer, _) = (rb.consumer(), rb.producer());
-        let mut b = [0];
+        let mut b = [42];
         match consumer.get(&mut b) {
             Err(RbError::Empty) => {}
             v => panic!("No error or incorrect error: {:?}", v),
         }
+        assert_eq!(b[0], 42);
     }
 
     #[test]
@@ -513,11 +514,12 @@ mod tests {
     fn read_from_empty_buffer_returns_error() {
         let rb = SpscRb::new(1);
         let (consumer, _) = (rb.consumer(), rb.producer());
-        let mut b = [0];
+        let mut b = [42];
         match consumer.read(&mut b) {
             Err(RbError::Empty) => {}
             v => panic!("No error or incorrect error: {:?}", v),
         }
+        assert_eq!(b[0], 42);
     }
 
     #[test]
@@ -528,7 +530,7 @@ mod tests {
         producer.write(&a).unwrap();
         let mut b: [u8; 0] = [];
         match consumer.read_blocking(&mut b) {
-            None => {},
+            None => {}
             v => panic!("`read_blocking` unexpectedly returned {:?}", v),
         }
     }
@@ -541,9 +543,12 @@ mod tests {
         producer.write(&a).unwrap();
         let mut b = [0];
         consumer.read(&mut b).unwrap();
+        assert_eq!(b[0], 1);
         let c = [2, 3];
         producer.write(&c).unwrap();
         let mut d = [0, 0];
         consumer.get(&mut d).unwrap();
+        assert_eq!(d[0], 2);
+        assert_eq!(d[1], 3);
     }
 }
