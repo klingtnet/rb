@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use std::cmp;
 use std::fmt;
 use std::sync::{Arc, Mutex, Condvar};
@@ -368,7 +371,7 @@ impl<T: Clone + Copy> RbConsumer<T> for Consumer<T> {
         } else {
             let d = buf_len - re_pos;
             data[..d].copy_from_slice(&buf[re_pos..]);
-            data[d..].copy_from_slice(&buf[..(cnt - d)]);
+            data[d..cnt].copy_from_slice(&buf[..(cnt - d)]);
         }
 
         Ok(cnt)
