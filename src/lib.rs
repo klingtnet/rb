@@ -387,7 +387,7 @@ impl<T: Clone + Copy> RbConsumer<T> for Consumer<T> {
         let re_pos = self.inspector.read_pos.load(Ordering::Relaxed);
 
         if (re_pos + cnt) < buf_len {
-            data[..].copy_from_slice(&buf[re_pos..re_pos + cnt]);
+            data[..cnt].copy_from_slice(&buf[re_pos..re_pos + cnt]);
         } else {
             let d = buf_len - re_pos;
             data[..d].copy_from_slice(&buf[re_pos..]);
