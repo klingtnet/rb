@@ -1,14 +1,13 @@
 #![feature(test)]
 
+extern crate rand;
 extern crate rb;
 extern crate test;
-extern crate rand;
 
-use rb::{SpscRb, RB, RbProducer, RbConsumer};
-use std::thread;
 use rand::{Rng, XorShiftRng};
+use rb::{RbConsumer, RbProducer, SpscRb, RB};
+use std::thread;
 use test::Bencher;
-
 
 #[bench]
 /// Benchmark the time it takes to blocking read and write a 1k buffer of f32 elements.

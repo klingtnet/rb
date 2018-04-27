@@ -3,8 +3,8 @@ mod tests;
 
 use std::cmp;
 use std::fmt;
-use std::sync::{Arc, Mutex, Condvar};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Condvar, Mutex};
 
 /// Managment interface for the ring buffer.
 pub trait RB<T: Clone + Copy + Default> {
@@ -286,10 +286,9 @@ impl<T: Clone + Copy> RbProducer<T> for Producer<T> {
             buf[wr_pos..].copy_from_slice(&data[..d]);
             buf[..(cnt - d)].copy_from_slice(&data[d..cnt]);
         }
-        self.inspector.write_pos.store(
-            (wr_pos + cnt) % buf_len,
-            Ordering::Relaxed,
-        );
+        self.inspector
+            .write_pos
+            .store((wr_pos + cnt) % buf_len, Ordering::Relaxed);
 
         self.data_available.notify_one();
         return Ok(cnt);
@@ -317,10 +316,9 @@ impl<T: Clone + Copy> RbProducer<T> for Producer<T> {
             buf[wr_pos..].copy_from_slice(&data[..d]);
             buf[..(cnt - d)].copy_from_slice(&data[d..cnt]);
         }
-        self.inspector.write_pos.store(
-            (wr_pos + cnt) % buf_len,
-            Ordering::Relaxed,
-        );
+        self.inspector
+            .write_pos
+            .store((wr_pos + cnt) % buf_len, Ordering::Relaxed);
 
         self.data_available.notify_one();
         return Some(cnt);
@@ -398,10 +396,9 @@ impl<T: Clone + Copy> RbConsumer<T> for Consumer<T> {
         }
 
         // TODO: Notify all? empty->slots_free
-        self.inspector.read_pos.store(
-            (re_pos + cnt) % buf_len,
-            Ordering::Relaxed,
-        );
+        self.inspector
+            .read_pos
+            .store((re_pos + cnt) % buf_len, Ordering::Relaxed);
         self.slots_free.notify_one();
         Ok(cnt)
     }
@@ -428,10 +425,9 @@ impl<T: Clone + Copy> RbConsumer<T> for Consumer<T> {
             data[d..cnt].copy_from_slice(&buf[..(cnt - d)]);
         }
 
-        self.inspector.read_pos.store(
-            (re_pos + cnt) % buf_len,
-            Ordering::Relaxed,
-        );
+        self.inspector
+            .read_pos
+            .store((re_pos + cnt) % buf_len, Ordering::Relaxed);
         self.slots_free.notify_one();
         Some(cnt)
     }

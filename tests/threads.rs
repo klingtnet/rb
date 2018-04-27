@@ -1,6 +1,6 @@
 extern crate rb;
 
-use rb::{RB, SpscRb, RbInspector, RbProducer, RbConsumer};
+use rb::{RbConsumer, RbInspector, RbProducer, SpscRb, RB};
 use std::thread;
 
 #[test]
@@ -14,11 +14,13 @@ fn test_threads() {
     let mut out_data = Vec::with_capacity(size);
 
     const WRITE_BUF_SIZE: usize = 32;
-    thread::spawn(move || for i in 0..(size / WRITE_BUF_SIZE) {
-        let cnt = producer
-            .write(&in_data_copy[i * WRITE_BUF_SIZE..(i + 1) * WRITE_BUF_SIZE])
-            .unwrap();
-        assert_eq!(cnt, WRITE_BUF_SIZE);
+    thread::spawn(move || {
+        for i in 0..(size / WRITE_BUF_SIZE) {
+            let cnt = producer
+                .write(&in_data_copy[i * WRITE_BUF_SIZE..(i + 1) * WRITE_BUF_SIZE])
+                .unwrap();
+            assert_eq!(cnt, WRITE_BUF_SIZE);
+        }
     });
 
     const READ_BUF_SIZE: usize = 8;
@@ -45,11 +47,13 @@ fn test_threads_blocking() {
     let mut out_data = Vec::with_capacity(size);
 
     const WRITE_BUF_SIZE: usize = 32;
-    thread::spawn(move || for i in 0..(size / WRITE_BUF_SIZE) {
-        let cnt = producer
-            .write_blocking(&in_data_copy[i * WRITE_BUF_SIZE..(i + 1) * WRITE_BUF_SIZE])
-            .unwrap();
-        assert_eq!(cnt, WRITE_BUF_SIZE);
+    thread::spawn(move || {
+        for i in 0..(size / WRITE_BUF_SIZE) {
+            let cnt = producer
+                .write_blocking(&in_data_copy[i * WRITE_BUF_SIZE..(i + 1) * WRITE_BUF_SIZE])
+                .unwrap();
+            assert_eq!(cnt, WRITE_BUF_SIZE);
+        }
     });
 
     const READ_BUF_SIZE: usize = 8;
@@ -74,8 +78,10 @@ fn test_threads_count_underflow() {
     let consumer = rb.consumer();
     let in_data = [0; WRITE_BUF_SIZE];
 
-    thread::spawn(move || for _ in 0..ITERATIONS {
-        producer.write_blocking(&in_data).unwrap();
+    thread::spawn(move || {
+        for _ in 0..ITERATIONS {
+            producer.write_blocking(&in_data).unwrap();
+        }
     });
 
     for _ in 0..ITERATIONS {

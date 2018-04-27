@@ -1,7 +1,7 @@
 extern crate rb;
 
-use std::thread;
 use rb::*;
+use std::thread;
 
 fn main() {
     const SIZE: usize = 128;

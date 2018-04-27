@@ -1,6 +1,6 @@
 extern crate rb;
 
-use rb::{RB, SpscRb, RbInspector, RbProducer, RbConsumer};
+use rb::{RbConsumer, RbInspector, RbProducer, SpscRb, RB};
 
 #[test]
 fn test_write() {
