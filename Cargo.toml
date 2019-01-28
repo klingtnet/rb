@@ -1,7 +1,7 @@
 [package]
 name = "rb"
 description = "A thread-safe ring buffer with blocking IO"
-keywords = ["IO", "audio", "ring-buffer", "circular-buffer"]
+keywords = ["IO", "audio", "ring-buffer", "ringbuffer", "circular-buffer", "circularbuffer"]
 version = "0.3.2"
 authors = ["Andreas Linz <klingt.net@gmail.com>"]
 documentation = "https://docs.rs/rb"
