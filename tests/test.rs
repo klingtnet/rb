@@ -1,5 +1,7 @@
 extern crate rb;
 
+use std::time::Duration;
+
 use rb::{RbConsumer, RbInspector, RbProducer, SpscRb, RB};
 
 #[test]
@@ -160,6 +162,35 @@ fn test_read_write_wrap_blocking() {
     // Read data into a larger buffer, otherwise triggering a panic
     let mut out_data = vec![0; 3];
     consumer.read_blocking(&mut out_data).unwrap();
+    assert_eq!(rb.count(), 0);
+    assert_eq!(rb.slots_free(), 2);
+}
+
+#[test]
+fn test_read_write_timeout_wrap_blocking() {
+    const SIZE: usize = 2;
+    let rb = SpscRb::new(SIZE);
+    let (consumer, producer) = (rb.consumer(), rb.producer());
+    assert!(rb.is_empty());
+    let in_data = (0..SIZE).map(|i| i * 2).collect::<Vec<_>>();
+    // Fill the buffer
+    producer.write_blocking(&in_data).unwrap();
+    // Read half the data
+    let mut out_data = vec![0; 1];
+    consumer
+        .read_blocking_timeout(&mut out_data, Duration::from_millis(100))
+        .unwrap();
+    assert_eq!(rb.count(), 1);
+    assert_eq!(rb.slots_free(), 1);
+    // Write more data so that it wraps around
+    producer.write_blocking(&in_data).unwrap();
+    assert_eq!(rb.count(), 2);
+    assert_eq!(rb.slots_free(), 0);
+    // Read data into a larger buffer, otherwise triggering a panic
+    let mut out_data = vec![0; 3];
+    consumer
+        .read_blocking_timeout(&mut out_data, Duration::from_millis(100))
+        .unwrap();
     assert_eq!(rb.count(), 0);
     assert_eq!(rb.slots_free(), 2);
 }

@@ -5,6 +5,7 @@ use std::cmp;
 use std::fmt;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
+use std::time::Duration;
 
 /// Managment interface for the ring buffer.
 pub trait RB<T: Clone + Copy + Default> {
@@ -40,12 +41,22 @@ pub trait RbProducer<T> {
     /// Possible errors:
     ///
     /// - `RbError::Full`
-    fn write(&self, &[T]) -> Result<usize>;
+    fn write(&self, data: &[T]) -> Result<usize>;
     /// Works analog to `write` but blocks until there are free slots in the ring buffer.
     /// The number of actual blocks written is returned in the `Option` value.
     ///
     /// Returns `None` if the given slice has zero length.
-    fn write_blocking(&self, &[T]) -> Option<usize>;
+    fn write_blocking(&self, data: &[T]) -> Option<usize>;
+    /// Works analog to `write` but blocks until there are free slots in the ring buffer
+    /// or until the specified timeout is reached.
+    /// The number of actual blocks written is returned in the `Ok(Option)` value.
+    ///
+    /// Returns `Ok(None)` if the given slice has zero length.
+    ///
+    /// Possible errors:
+    ///
+    /// - `RbError::TimedOut`
+    fn write_blocking_timeout(&self, data: &[T], timeout: Duration) -> Result<Option<usize>>;
 }
 
 /// Defines *read* methods for a consumer view.
@@ -81,21 +92,32 @@ pub trait RbConsumer<T> {
     /// Possible errors:
     ///
     /// - RbError::Empty
-    fn get(&self, &mut [T]) -> Result<usize>;
+    fn get(&self, data: &mut [T]) -> Result<usize>;
     /// Fills the given slice with values or, if the buffer is empty, does not modify it.
     /// Returns the number of written values or an error.
     ///
     /// Possible errors:
     ///
     /// - RbError::Empty
-    fn read(&self, &mut [T]) -> Result<usize>;
+    fn read(&self, data: &mut [T]) -> Result<usize>;
     /// Works analog to `read` but blocks until it can read elements to fill
     /// the given buffer slice.
     /// The number of blocks read is not necessarily equal to the length of the given buffer slice,
     /// the exact number is returned in the `Option` value.
     ///
     /// Returns `None` if the given slice has zero length.
-    fn read_blocking(&self, &mut [T]) -> Option<usize>;
+    fn read_blocking(&self, data: &mut [T]) -> Option<usize>;
+    /// Works analog to `read` but blocks until it can read elements to fill
+    /// the given buffer slice or the specified timeout is reached.
+    /// The number of blocks read is not necessarily equal to the length of the given buffer slice,
+    /// the exact number is returned in the `Ok(Option)` value.
+    ///
+    /// Returns `Ok(None)` if the given slice has zero length.
+    ///
+    /// Possible errors:
+    ///
+    /// - RbError::TimedOut
+    fn read_blocking_timeout(&self, data: &mut [T], timeout: Duration) -> Result<Option<usize>>;
 }
 
 /// Ring buffer errors.
@@ -103,12 +125,14 @@ pub trait RbConsumer<T> {
 pub enum RbError {
     Full,
     Empty,
+    TimedOut,
 }
 impl fmt::Display for RbError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             RbError::Full => write!(f, "No free slots in the buffer"),
             RbError::Empty => write!(f, "Buffer is empty"),
+            RbError::TimedOut => write!(f, "Timed out waiting for available slots"),
         }
     }
 }
@@ -324,6 +348,40 @@ impl<T: Clone + Copy> RbProducer<T> for Producer<T> {
         self.data_available.notify_one();
         Some(cnt)
     }
+
+    fn write_blocking_timeout(&self, data: &[T], timeout: Duration) -> Result<Option<usize>> {
+        if data.is_empty() {
+            return Ok(None);
+        }
+        let guard = self.buf.lock().unwrap();
+        let mut buf = if self.inspector.is_full() {
+            let (guard, result) = self.slots_free.wait_timeout(guard, timeout).unwrap();
+            if result.timed_out() {
+                return Err(RbError::TimedOut);
+            }
+            guard
+        } else {
+            guard
+        };
+        let buf_len = buf.len();
+        let data_len = data.len();
+        let wr_pos = self.inspector.write_pos.load(Ordering::Relaxed);
+        let cnt = cmp::min(data_len, self.inspector.slots_free());
+
+        if (wr_pos + cnt) < buf_len {
+            buf[wr_pos..wr_pos + cnt].copy_from_slice(&data[..cnt]);
+        } else {
+            let d = buf_len - wr_pos;
+            buf[wr_pos..].copy_from_slice(&data[..d]);
+            buf[..(cnt - d)].copy_from_slice(&data[d..cnt]);
+        }
+        self.inspector
+            .write_pos
+            .store((wr_pos + cnt) % buf_len, Ordering::Relaxed);
+
+        self.data_available.notify_one();
+        Ok(Some(cnt))
+    }
 }
 
 impl<T: Clone + Copy> RbConsumer<T> for Consumer<T> {
@@ -431,5 +489,38 @@ impl<T: Clone + Copy> RbConsumer<T> for Consumer<T> {
             .store((re_pos + cnt) % buf_len, Ordering::Relaxed);
         self.slots_free.notify_one();
         Some(cnt)
+    }
+
+    fn read_blocking_timeout(&self, data: &mut [T], timeout: Duration) -> Result<Option<usize>> {
+        if data.is_empty() {
+            return Ok(None);
+        }
+        let guard = self.buf.lock().unwrap();
+        let buf = if self.inspector.is_empty() {
+            let (guard, result) = self.data_available.wait_timeout(guard, timeout).unwrap();
+            if result.timed_out() {
+                return Err(RbError::TimedOut);
+            }
+            guard
+        } else {
+            guard
+        };
+        let buf_len = buf.len();
+        let cnt = cmp::min(data.len(), self.inspector.count());
+        let re_pos = self.inspector.read_pos.load(Ordering::Relaxed);
+
+        if (re_pos + cnt) < buf_len {
+            data[..cnt].copy_from_slice(&buf[re_pos..re_pos + cnt]);
+        } else {
+            let d = buf_len - re_pos;
+            data[..d].copy_from_slice(&buf[re_pos..]);
+            data[d..cnt].copy_from_slice(&buf[..(cnt - d)]);
+        }
+
+        self.inspector
+            .read_pos
+            .store((re_pos + cnt) % buf_len, Ordering::Relaxed);
+        self.slots_free.notify_one();
+        Ok(Some(cnt))
     }
 }

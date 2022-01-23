@@ -23,6 +23,33 @@ fn write_blocking_empty_buffer_returns_zero() {
 }
 
 #[test]
+fn write_blocking_timeout_empty_buffer_returns_zero() {
+    let rb = SpscRb::new(1);
+    let (_, producer) = (rb.consumer(), rb.producer());
+    let a: [u8; 0] = [];
+    match producer.write_blocking_timeout(&a, Duration::from_millis(100)) {
+        Ok(None) => {}
+        v => panic!("`write_blocking_timeout` didn't return None, but {:?}", v),
+    }
+}
+
+#[test]
+fn write_blocking_timeout_times_out() {
+    const SIZE: usize = 8;
+    let rb = SpscRb::new(SIZE);
+    let (_, producer) = (rb.consumer(), rb.producer());
+    let a = [0; SIZE];
+    match producer.write_blocking_timeout(&a, Duration::from_millis(100)) {
+        Ok(Some(v)) => assert_eq!(v, SIZE),
+        v => panic!("`write_blocking_timeout` returned {:?}", v),
+    }
+    match producer.write_blocking_timeout(&a, Duration::from_millis(100)) {
+        Err(RbError::TimedOut) => {}
+        v => panic!("`write_blocking_timeout` returned {:?}", v),
+    }
+}
+
+#[test]
 fn write_to_full_queue_returns_error() {
     let rb = SpscRb::new(1);
     let (_, producer) = (rb.consumer(), rb.producer());
@@ -97,6 +124,31 @@ fn read_blocking_to_empty_buffer_returns_none() {
     }
 }
 
+#[test]
+fn read_blocking_timeout_to_empty_buffer_returns_none() {
+    let rb = SpscRb::new(1);
+    let (consumer, producer) = (rb.consumer(), rb.producer());
+    let a = [1];
+    producer.write(&a).unwrap();
+    let mut b: [u8; 0] = [];
+    match consumer.read_blocking_timeout(&mut b, Duration::from_millis(100)) {
+        Ok(None) => {}
+        v => panic!("`read_blocking_timeout` unexpectedly returned {:?}", v),
+    }
+}
+
+#[test]
+fn read_blocking_timeout_times_out() {
+    const SIZE: usize = 8;
+    let rb = SpscRb::new(SIZE);
+    let consumer = rb.consumer();
+
+    let mut b = [0; SIZE];
+    match consumer.read_blocking_timeout(&mut b, Duration::from_millis(100)) {
+        Err(RbError::TimedOut) => {}
+        v => panic!("`read_blocking` unexpectedly returned {:?}", v),
+    }
+}
 #[test]
 fn get_with_wrapping() {
     let rb = SpscRb::new(1);
