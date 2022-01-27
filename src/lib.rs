@@ -320,49 +320,31 @@ impl<T: Clone + Copy> RbProducer<T> for Producer<T> {
     }
 
     fn write_blocking(&self, data: &[T]) -> Option<usize> {
-        if data.is_empty() {
-            return None;
-        }
-        let guard = self.buf.lock().unwrap();
-        let mut buf = if self.inspector.is_full() {
-            self.slots_free.wait(guard).unwrap()
-        } else {
-            guard
-        };
-        let buf_len = buf.len();
-        let data_len = data.len();
-        let wr_pos = self.inspector.write_pos.load(Ordering::Relaxed);
-        let cnt = cmp::min(data_len, self.inspector.slots_free());
-
-        if (wr_pos + cnt) < buf_len {
-            buf[wr_pos..wr_pos + cnt].copy_from_slice(&data[..cnt]);
-        } else {
-            let d = buf_len - wr_pos;
-            buf[wr_pos..].copy_from_slice(&data[..d]);
-            buf[..(cnt - d)].copy_from_slice(&data[d..cnt]);
-        }
-        self.inspector
-            .write_pos
-            .store((wr_pos + cnt) % buf_len, Ordering::Relaxed);
-
-        self.data_available.notify_one();
-        Some(cnt)
+        self.write_blocking_timeout(data, Duration::MAX)
+            .expect("Max duration should not time out")
     }
 
     fn write_blocking_timeout(&self, data: &[T], timeout: Duration) -> Result<Option<usize>> {
         if data.is_empty() {
             return Ok(None);
         }
+
         let guard = self.buf.lock().unwrap();
         let mut buf = if self.inspector.is_full() {
-            let (guard, result) = self.slots_free.wait_timeout(guard, timeout).unwrap();
-            if result.timed_out() {
-                return Err(RbError::TimedOut);
+            if timeout == Duration::MAX {
+                // No need to call wait_timeout if the duration is max
+                self.slots_free.wait(guard).unwrap()
+            } else {
+                let (guard, result) = self.slots_free.wait_timeout(guard, timeout).unwrap();
+                if result.timed_out() {
+                    return Err(RbError::TimedOut);
+                }
+                guard
             }
-            guard
         } else {
             guard
         };
+
         let buf_len = buf.len();
         let data_len = data.len();
         let wr_pos = self.inspector.write_pos.load(Ordering::Relaxed);
@@ -463,48 +445,31 @@ impl<T: Clone + Copy> RbConsumer<T> for Consumer<T> {
     }
 
     fn read_blocking(&self, data: &mut [T]) -> Option<usize> {
-        if data.is_empty() {
-            return None;
-        }
-        let guard = self.buf.lock().unwrap();
-        let buf = if self.inspector.is_empty() {
-            self.data_available.wait(guard).unwrap()
-        } else {
-            guard
-        };
-        let buf_len = buf.len();
-        let cnt = cmp::min(data.len(), self.inspector.count());
-        let re_pos = self.inspector.read_pos.load(Ordering::Relaxed);
-
-        if (re_pos + cnt) < buf_len {
-            data[..cnt].copy_from_slice(&buf[re_pos..re_pos + cnt]);
-        } else {
-            let d = buf_len - re_pos;
-            data[..d].copy_from_slice(&buf[re_pos..]);
-            data[d..cnt].copy_from_slice(&buf[..(cnt - d)]);
-        }
-
-        self.inspector
-            .read_pos
-            .store((re_pos + cnt) % buf_len, Ordering::Relaxed);
-        self.slots_free.notify_one();
-        Some(cnt)
+        self.read_blocking_timeout(data, Duration::MAX)
+            .expect("Max duration shouldn't time out")
     }
 
     fn read_blocking_timeout(&self, data: &mut [T], timeout: Duration) -> Result<Option<usize>> {
         if data.is_empty() {
             return Ok(None);
         }
+
         let guard = self.buf.lock().unwrap();
         let buf = if self.inspector.is_empty() {
-            let (guard, result) = self.data_available.wait_timeout(guard, timeout).unwrap();
-            if result.timed_out() {
-                return Err(RbError::TimedOut);
+            if timeout == Duration::MAX {
+                // No need to call wait_timeout if the duration is max
+                self.data_available.wait(guard).unwrap()
+            } else {
+                let (guard, result) = self.data_available.wait_timeout(guard, timeout).unwrap();
+                if result.timed_out() {
+                    return Err(RbError::TimedOut);
+                }
+                guard
             }
-            guard
         } else {
             guard
         };
+
         let buf_len = buf.len();
         let cnt = cmp::min(data.len(), self.inspector.count());
         let re_pos = self.inspector.read_pos.load(Ordering::Relaxed);
