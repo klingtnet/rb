@@ -47,8 +47,7 @@ pub trait RbProducer<T> {
     ///
     /// Returns `None` if the given slice has zero length.
     fn write_blocking(&self, data: &[T]) -> Option<usize>;
-    /// Works analog to `write` but blocks until there are free slots in the ring buffer
-    /// or until the specified timeout is reached.
+    /// Works analog to `write_blocking` but eventually returns if the specified timeout is reached.
     /// The number of actual blocks written is returned in the `Ok(Option)` value.
     ///
     /// Returns `Ok(None)` if the given slice has zero length.
