@@ -106,9 +106,7 @@ pub trait RbConsumer<T> {
     ///
     /// Returns `None` if the given slice has zero length.
     fn read_blocking(&self, data: &mut [T]) -> Option<usize>;
-    /// Works analog to `read` but blocks until it can read elements to fill
-    /// the given buffer slice or the specified timeout is reached.
-    /// The number of blocks read is not necessarily equal to the length of the given buffer slice,
+    /// Works analog to `read_blocking` but eventually returns if the specified timeout is reached.
     /// the exact number is returned in the `Ok(Option)` value.
     ///
     /// Returns `Ok(None)` if the given slice has zero length.
