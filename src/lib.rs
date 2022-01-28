@@ -107,7 +107,7 @@ pub trait RbConsumer<T> {
     /// Returns `None` if the given slice has zero length.
     fn read_blocking(&self, data: &mut [T]) -> Option<usize>;
     /// Works analog to `read_blocking` but eventually returns if the specified timeout is reached.
-    /// the exact number is returned in the `Ok(Option)` value.
+    /// The exact number is returned in the `Ok(Option)` value.
     ///
     /// Returns `Ok(None)` if the given slice has zero length.
     ///
