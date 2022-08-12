@@ -182,3 +182,31 @@ fn get_with_wrapping_2() {
     assert_eq!(d[0], 2);
     assert_eq!(d[1], 3);
 }
+
+#[test]
+fn read_equals_get_and_skip() {
+    let rb = SpscRb::new(2);
+    let (consumer, producer) = (rb.consumer(), rb.producer());
+    let mut a = [1, 2];
+    assert_eq!(producer.write(&a).unwrap(), 2);
+    assert_eq!(rb.count(), 2);
+    assert_eq!(rb.slots_free(), 0);
+    let mut b = [0, 0, 0, 0];
+    assert_eq!(consumer.read(&mut b).unwrap(), 2);
+    assert_eq!(b, [1, 2, 0, 0]);
+    assert_eq!(rb.count(), 0);
+    assert_eq!(rb.slots_free(), 2);
+
+    // the same should be the case for get and skip
+    a[0] = 3;
+    a[1] = 4;
+    assert_eq!(producer.write(&a).unwrap(), 2);
+    assert_eq!(rb.count(), 2);
+    assert_eq!(consumer.get(&mut b).unwrap(), 2);
+    assert_eq!(b, [3, 4, 0, 0]);
+    assert_eq!(rb.count(), 2);
+    assert_eq!(rb.slots_free(), 0);
+    assert_eq!(consumer.skip(2).unwrap(), 2);
+    assert_eq!(rb.count(), 0);
+    assert_eq!(rb.slots_free(), 2);
+}

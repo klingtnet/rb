@@ -383,7 +383,7 @@ impl<T: Clone + Copy> RbConsumer<T> for Consumer<T> {
             let count = cmp::min(cnt, self.inspector.count());
             let prev_read_pos = self.inspector.read_pos.load(Ordering::Relaxed);
             self.inspector.read_pos.store(
-                (prev_read_pos + count) % self.inspector.capacity(),
+                (prev_read_pos + count) % self.inspector.size,
                 Ordering::Relaxed,
             );
             Ok(count)
