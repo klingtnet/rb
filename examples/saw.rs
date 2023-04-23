@@ -20,7 +20,8 @@ fn main() {
         };
         loop {
             // write a slice of size length 32 (length can be anything smaller than SIZE)
-            let cnt = prod.write_blocking(&saw().skip(skip).take(PERIOD).collect::<Vec<f32>>())
+            let cnt = prod
+                .write_blocking(&saw().skip(skip).take(PERIOD).collect::<Vec<f32>>())
                 .unwrap();
             skip += cnt % (PERIOD);
         }
