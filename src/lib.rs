@@ -186,8 +186,8 @@ impl<T: Clone + Copy + Default> SpscRb<T> {
             data_available: Arc::new(Condvar::new()),
             // the additional element is used to distinct between empty and full state
             inspector: Arc::new(Inspector {
-                read_pos: read_pos.clone(),
-                write_pos: write_pos.clone(),
+                read_pos,
+                write_pos,
                 size: size + 1,
             }),
         }
