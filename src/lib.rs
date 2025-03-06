@@ -157,9 +157,9 @@ struct Inspector {
 /// let rb = SpscRb::new(1024);
 /// let (prod, cons) = (rb.producer(), rb.consumer());
 /// thread::spawn(move || {
-///     let gen = || {(-16..16+1).cycle().map(|x| x as f32/16.0)};
+///     let generator = || {(-16..16+1).cycle().map(|x| x as f32/16.0)};
 ///     loop {
-///         let data = gen().take(32).collect::<Vec<f32>>();
+///         let data = generator().take(32).collect::<Vec<f32>>();
 ///         prod.write(&data).unwrap();
 ///     }
 /// });
@@ -197,7 +197,7 @@ impl<T: Clone + Copy + Default> SpscRb<T> {
 impl<T: Clone + Copy + Default> RB<T> for SpscRb<T> {
     fn clear(&self) {
         let mut buf = self.buf.lock().unwrap();
-        buf.iter_mut().map(|_| T::default()).count();
+        buf.iter_mut().for_each(|x| *x = Default::default());
         self.inspector.read_pos.store(0, Ordering::Relaxed);
         self.inspector.write_pos.store(0, Ordering::Relaxed);
     }

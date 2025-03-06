@@ -7,7 +7,7 @@ extern crate test;
 
 use rand_core::{RngCore, SeedableRng};
 use rand_xorshift::XorShiftRng;
-use rb::{RbConsumer, RbProducer, SpscRb, RB};
+use rb::{RB, RbConsumer, RbProducer, SpscRb};
 use std::thread;
 use test::Bencher;
 
@@ -22,8 +22,10 @@ fn bench_passing_a_1k_buffer_blocking(b: &mut Bencher) {
     let data = (0..SIZE)
         .map(|_| rand_float(&mut rng))
         .collect::<Vec<f64>>();
-    thread::spawn(move || loop {
-        producer.write_blocking(&data).unwrap();
+    thread::spawn(move || {
+        loop {
+            producer.write_blocking(&data).unwrap();
+        }
     });
     let mut buf = [0f64; SIZE];
     b.iter(|| {

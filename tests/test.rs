@@ -2,7 +2,7 @@ extern crate rb;
 
 use std::time::Duration;
 
-use rb::{RbConsumer, RbInspector, RbProducer, SpscRb, RB};
+use rb::{RB, RbConsumer, RbInspector, RbProducer, SpscRb};
 
 #[test]
 fn test_write() {

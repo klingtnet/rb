@@ -1,6 +1,6 @@
 extern crate rb;
 
-use rb::{RbConsumer, RbInspector, RbProducer, SpscRb, RB};
+use rb::{RB, RbConsumer, RbInspector, RbProducer, SpscRb};
 use std::{thread, time::Duration};
 
 #[test]
