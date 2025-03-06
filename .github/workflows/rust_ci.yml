@@ -22,4 +22,5 @@ jobs:
       - run: cargo clippy -- -Dclippy::all
       - run: cargo clippy -- -Dclippy::all -Dclippy::pedantic
         continue-on-error: true
+      - run: rustup toolchain install nightly
       - run: cargo +nightly bench
